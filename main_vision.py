@@ -23,7 +23,7 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 # Clé API Gemini
-API_KEY = "AQ.Ab8RN6I19Ao7ZXfQW7gdhXCHNZADLHu_DmSQMgQDxtlYZx0nyA"
+API_KEY = "GEMINI_API_KEY"
 
 # ==================== PALETTE DE COULEURS ====================
 BG_COLOR = "#1e1e2e"  # Arrière-plan principal (Dark Neon)
