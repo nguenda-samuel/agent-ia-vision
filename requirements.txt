@@ -1,0 +1,12 @@
+customtkinter
+google-genai
+gTTS
+mss
+Pillow
+pygame
+pynput
+PyQt6
+SpeechRecognition
+opencv-python
+imagehash
+numpy
