@@ -10,3 +10,4 @@ SpeechRecognition
 opencv-python
 imagehash
 numpy
+pyaudio
