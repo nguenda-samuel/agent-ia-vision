@@ -1,4 +1,3 @@
-
 import io
 import math
 import os
@@ -611,6 +610,8 @@ class VisionAssistantApp(ctk.CTk):
         self.current_workflow_goal = None
         self.workflow_active = False
         self.is_processing = False  # Garde-fou : empêche deux analyses simultanées
+        self.wait_retry_count = 0
+        self.max_wait_retries = 6  # Nombre d'attentes consécutives tolérées avant d'abandonner
         self.current_sequence = []
         self.current_step_index = 0
         self.current_monitor = None
@@ -803,16 +804,30 @@ class VisionAssistantApp(ctk.CTk):
                 return
             if use_vision:
                 self.avatar.withdraw()
+                # Le pointeur est déjà masqué avant qu'on revienne ici (voir
+                # execute_sequence_step) : pas besoin de le refaire, et surtout
+                # pas depuis ce thread (voir explication ci-dessous).
                 time.sleep(0.1)
 
-                with mss.MSS() as sct:
-                    monitor = self.get_active_monitor()
-                    sct_img = sct.grab(monitor)
-                    img = Image.frombytes(
-                        "RGB", sct_img.size, sct_img.bgra, "raw", "BGRX"
-                    )
-                    img.thumbnail((768, 768))
-                    self.current_monitor = monitor
+                monitor = self.get_active_monitor()
+                self.current_monitor = monitor
+
+                def _capture_monitor():
+                    with mss.MSS() as sct:
+                        shot = sct.grab(monitor)
+                        return Image.frombytes(
+                            "RGB", shot.size, shot.bgra, "raw", "BGRX"
+                        )
+
+                self.after(
+                    0,
+                    lambda: self.set_status(
+                        "🔎 Attente de stabilité de l'écran...", "#f1c40f", "scan"
+                    ),
+                )
+                # 100% local : aucune requête API n'est faite tant que l'écran bouge.
+                img = self.ai_engine.stream.wait_until_stable(_capture_monitor)
+                img.thumbnail((768, 768))
 
                 self.avatar.deiconify()
 
@@ -831,6 +846,7 @@ class VisionAssistantApp(ctk.CTk):
                     self.append_to_chat(response_text, is_user=False)
 
                     if action == "click" and x is not None and y is not None:
+                        self.wait_retry_count = 0
                         self.current_sequence = [
                             {
                                 "x": int(x),
@@ -845,7 +861,29 @@ class VisionAssistantApp(ctk.CTk):
                                 self.current_step_index
                             ),
                         )
+                    elif action == "wait":
+                        self.speak(response_text)
+                        self.wait_retry_count += 1
+                        if self.wait_retry_count <= self.max_wait_retries:
+                            # On relance une analyse un peu plus tard. La vraie
+                            # attente "intelligente" se fait toute seule au
+                            # prochain appel via wait_until_stable — en local,
+                            # sans consommer de quota API pendant l'attente.
+                            self.after(
+                                900,
+                                lambda: self.process_request(use_vision=True),
+                            )
+                        else:
+                            self.wait_retry_count = 0
+                            self.append_to_chat(
+                                "⚠️ Toujours en attente après plusieurs essais, "
+                                "j'arrête pour ne pas gaspiller ton quota API. "
+                                "Réappuie sur F9 quand la page sera prête.",
+                                is_user=False,
+                            )
+                            self.after(0, self.stop_agent_workflow)
                     else:
+                        self.wait_retry_count = 0
                         self.speak(response_text)
                         self.after(0, self.stop_agent_workflow)
 
@@ -1077,3 +1115,4 @@ class VisionAssistantApp(ctk.CTk):
 if __name__ == "__main__":
     app = VisionAssistantApp()
     app.mainloop()
+
