@@ -1,37 +1,220 @@
+
 import io
 import math
+import os
 import random
 import re
 import sys
 import threading
 import time
+import tkinter as tk
+
 import customtkinter as ctk
 from google import genai
 from gtts import gTTS
 import mss
-from PIL import Image, ImageChops, ImageTk, ImageStat
+from PIL import Image, ImageChops, ImageStat, ImageTk
 import pygame
 from pynput import keyboard, mouse
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QApplication, QLabel, QWidget
 import speech_recognition as sr
-import tkinter as tk
 
-# Configuration de l'esthétique globale (Thème sombre profond)
+from ai_engine import AIEngine
+
+# Configuration de l'esthétique globale
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
-# Clé API Gemini
-API_KEY = "GEMINI_API_KEY"
+BG_COLOR = "#1e1e2e"
+FRAME_BG = "#2a2b3d"
+USER_BUBBLE = "#6c5ce7"
+AI_BUBBLE = "#34495e"
+ACCENT_COLOR = "#00cec9"
+TEXT_COLOR = "#c8d3f5"
 
-# ==================== PALETTE DE COULEURS ====================
-BG_COLOR = "#1e1e2e"  # Arrière-plan principal (Dark Neon)
-FRAME_BG = "#2a2b3d"  # Arrière-plan des panneaux (Glass effect)
-USER_BUBBLE = "#6c5ce7"  # Violet moderne pour l'utilisateur
-AI_BUBBLE = "#34495e"  # Gris bleu pour l'IA
-ACCENT_COLOR = "#00cec9"  # Cyan néon pour les bordures
-TEXT_COLOR = "#c8d3f5"  # Texte clair
+
+# ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
+
+
+class AnimatedPointerWindow(tk.Toplevel):
+
+    def __init__(self, root, on_valid_click_callback):
+        super().__init__(root)
+        self.root = root
+        self.on_valid_click_callback = on_valid_click_callback
+
+        self.overrideredirect(True)
+        self.wm_attributes("-topmost", True)
+        self.trans_color = "#000001"
+        self.config(bg=self.trans_color)
+        try:
+            self.wm_attributes("-transparentcolor", self.trans_color)
+        except Exception:
+            pass
+
+        self.size = 120
+        self.geometry(f"{self.size}x{self.size}+-300+-300")
+
+        self.canvas = tk.Canvas(
+            self,
+            width=self.size,
+            height=self.size,
+            bg=self.trans_color,
+            highlightthickness=0,
+        )
+        self.canvas.pack(fill="both", expand=True)
+
+        self.ripple_phase = 0.0
+        self.current_x, self.current_y = -300, -300
+        self.exact_target_x, self.exact_target_y = 0, 0
+        self.tolerance_radius = 75
+
+        self.virtual_mouse = mouse.Controller()
+        self.active_listener = False
+        self.mouse_listener = mouse.Listener(on_click=self.on_global_click)
+        self.mouse_listener.start()
+
+        self.animate_ripples()
+
+    def draw_vector_hand(self, cx, cy):
+        """Dessine un avatar de main/index en vectoriel pur (sans aucun bord d'image)."""
+        hand_color = "#ffffff"
+        border_color = "#00cec9"
+
+        # 1. Poing / Paume
+        self.canvas.create_oval(
+            cx - 11,
+            cy - 2,
+            cx + 11,
+            cy + 18,
+            fill=hand_color,
+            outline=border_color,
+            width=2,
+        )
+
+        # 2. Index qui pointe vers le haut
+        self.canvas.create_polygon(
+            cx - 5,
+            cy - 22,
+            cx + 5,
+            cy - 22,
+            cx + 6,
+            cy + 2,
+            cx - 6,
+            cy + 2,
+            fill=hand_color,
+            outline=border_color,
+            width=2,
+        )
+
+        # 3. Pouce sur le côté
+        self.canvas.create_polygon(
+            cx - 10,
+            cy + 2,
+            cx - 16,
+            cy - 4,
+            cx - 12,
+            cy - 8,
+            cx - 6,
+            cy + 2,
+            fill=hand_color,
+            outline=border_color,
+            width=2,
+        )
+
+        # 4. Point d'impact lumineux au bout du doigt
+        self.canvas.create_oval(
+            cx - 3, cy - 25, cx + 3, cy - 19, fill="#ff7675", outline=""
+        )
+
+    def animate_ripples(self):
+        self.canvas.delete("all")
+        cx, cy = self.size // 2, self.size // 2
+
+        # Vagues d'ondes
+        self.ripple_phase = (self.ripple_phase + 0.06) % 1.0
+        for i in range(2):
+            phase = (self.ripple_phase + i * 0.5) % 1.0
+            r = 18 + phase * 36
+            width = max(1, int(3.5 - phase * 2.5))
+            color = "#00cec9" if phase < 0.65 else "#007a78"
+
+            self.canvas.create_oval(
+                cx - r, cy - r, cx + r, cy + r, outline=color, width=width
+            )
+
+        # Dessin de la main vectorielle
+        self.draw_vector_hand(cx, cy)
+
+        self.after(30, self.animate_ripples)
+
+    def on_global_click(self, x, y, button, pressed):
+        if pressed and self.active_listener and button == mouse.Button.left:
+            pointer_center_x = self.current_x + (self.size / 2)
+            pointer_center_y = self.current_y + (self.size / 2)
+
+            dist_target = math.hypot(
+                x - self.exact_target_x, y - self.exact_target_y
+            )
+            dist_pointer = math.hypot(
+                x - pointer_center_x, y - pointer_center_y
+            )
+
+            if (
+                dist_target <= self.tolerance_radius
+                or dist_pointer <= self.tolerance_radius
+            ):
+                self.active_listener = False
+                clicked_on_finger = (dist_pointer < dist_target) and (
+                    dist_target > 25
+                )
+
+                if clicked_on_finger:
+
+                    def _auto_click():
+                        time.sleep(0.05)
+                        self.virtual_mouse.position = (
+                            int(self.exact_target_x),
+                            int(self.exact_target_y),
+                        )
+                        time.sleep(0.05)
+                        self.virtual_mouse.click(mouse.Button.left)
+
+                    threading.Thread(target=_auto_click, daemon=True).start()
+                    self.root.after(200, self.on_valid_click_callback)
+                else:
+                    self.hide()
+                    self.root.after(150, self.on_valid_click_callback)
+
+    def animate_to(self, target_x, target_y):
+        self.exact_target_x, self.exact_target_y = target_x, target_y
+        dest_x, dest_y = int(target_x - (self.size / 2)), int(
+            target_y - (self.size / 2)
+        )
+
+        if self.current_x < 0:
+            self.current_x, self.current_y = dest_x, dest_y - 150
+
+        steps = 12
+        dx = (dest_x - self.current_x) / steps
+        dy = (dest_y - self.current_y) / steps
+
+        def step(i):
+            if i < steps:
+                self.current_x += dx
+                self.current_y += dy
+                self.geometry(f"+{int(self.current_x)}+{int(self.current_y)}")
+                self.root.after(12, lambda: step(i + 1))
+            else:
+                self.current_x, self.current_y = dest_x, dest_y
+                self.geometry(f"+{dest_x}+{dest_y}")
+                self.active_listener = True
+
+        step(0)
+
+    def hide(self):
+        self.active_listener = False
+        self.current_x, self.current_y = -300, -300
+        self.geometry("+-300+-300")
 
 
 # ==================== MINI-FENÊTRE DE SAISIE RAPIDE ====================
@@ -127,137 +310,6 @@ class QuickInputWindow(ctk.CTkToplevel):
         if text:
             self.app.append_to_chat(text, is_user=True)
             self.app.process_custom_prompt(text, use_vision=use_vision)
-
-
-# ==================== POINTEUR VISUEL TRANSPARENT (PyQt6) ====================
-
-
-class PointerWindow:
-
-    def __init__(self, root, on_valid_click_callback):
-        self.root = root
-        self.on_valid_click_callback = on_valid_click_callback
-
-        if not QApplication.instance():
-            self.qt_app = QApplication(sys.argv)
-        else:
-            self.qt_app = QApplication.instance()
-
-        self.pointer = QWidget()
-        self.pointer.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Tool
-        )
-        self.pointer.setAttribute(
-            Qt.WidgetAttribute.WA_TranslucentBackground, True
-        )
-
-        self.width = 80
-        self.height = 80
-        self.pointer.setFixedSize(self.width, self.height)
-
-        self.label = QLabel(self.pointer)
-        pixmap = QPixmap("pointeur.png")
-        if not pixmap.isNull():
-            self.label.setPixmap(
-                pixmap.scaled(
-                    50,
-                    50,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-            )
-        else:
-            self.label.setText("👆")
-            self.label.setStyleSheet("font-size: 35px; color: white;")
-
-        self.label.move(15, 15)
-
-        self.current_x, self.current_y = -100, -100
-        self.exact_target_x, self.exact_target_y = 0, 0
-        self.tolerance_radius = 70
-
-        self.virtual_mouse = mouse.Controller()
-        self.active_listener = False
-        self.mouse_listener = mouse.Listener(on_click=self.on_global_click)
-        self.mouse_listener.start()
-
-        self.pointer.move(-100, -100)
-        self.pointer.show()
-        self.qt_app.processEvents()
-
-    def on_global_click(self, x, y, button, pressed):
-        if pressed and self.active_listener and button == mouse.Button.left:
-            pointer_center_x = self.current_x + (self.width / 2)
-            pointer_center_y = self.current_y + (self.height / 2)
-
-            dist_target = math.hypot(
-                x - self.exact_target_x, y - self.exact_target_y
-            )
-            dist_pointer = math.hypot(
-                x - pointer_center_x, y - pointer_center_y
-            )
-
-            if (
-                dist_target <= self.tolerance_radius
-                or dist_pointer <= self.tolerance_radius
-            ):
-                self.active_listener = False
-                clicked_on_finger = (dist_pointer < dist_target) and (
-                    dist_target > 25
-                )
-
-                if clicked_on_finger:
-
-                    def _auto_click():
-                        time.sleep(0.05)
-                        self.virtual_mouse.position = (
-                            int(self.exact_target_x),
-                            int(self.exact_target_y),
-                        )
-                        time.sleep(0.05)
-                        self.virtual_mouse.click(mouse.Button.left)
-
-                    threading.Thread(target=_auto_click, daemon=True).start()
-                    self.root.after(200, self.on_valid_click_callback)
-                else:
-                    self.hide()
-                    self.root.after(150, self.on_valid_click_callback)
-
-    def animate_to(self, target_x, target_y):
-        self.exact_target_x, self.exact_target_y = target_x, target_y
-        dest_x, dest_y = int(target_x - (self.width / 2)), int(
-            target_y - (self.height / 2)
-        )
-
-        if self.current_x < 0:
-            self.current_x, self.current_y = dest_x, dest_y - 200
-
-        steps = 15
-        dx = (dest_x - self.current_x) / steps
-        dy = (dest_y - self.current_y) / steps
-
-        def step(i):
-            if i < steps:
-                self.current_x += dx
-                self.current_y += dy
-                self.pointer.move(int(self.current_x), int(self.current_y))
-                self.qt_app.processEvents()
-                self.root.after(10, lambda: step(i + 1))
-            else:
-                self.current_x, self.current_y = dest_x, dest_y
-                self.pointer.move(dest_x, dest_y)
-                self.qt_app.processEvents()
-                self.active_listener = True
-
-        step(0)
-
-    def hide(self):
-        self.active_listener = False
-        self.current_x, self.current_y = -100, -100
-        self.pointer.move(-100, -100)
-        self.qt_app.processEvents()
 
 
 # ==================== SOUS-TITRES ET VISUALISEUR AUDIO ====================
@@ -552,16 +604,19 @@ class VisionAssistantApp(ctk.CTk):
         self.wm_attributes("-topmost", True)
         self.configure(fg_color=BG_COLOR)
 
-        self.client = genai.Client(api_key=API_KEY)
+        api_key = os.getenv("GEMINI_API_KEY")
+        self.client = genai.Client(api_key=api_key)
+        self.ai_engine = AIEngine(gemini_client=self.client)
 
         self.current_workflow_goal = None
         self.workflow_active = False
+        self.is_processing = False  # Garde-fou : empêche deux analyses simultanées
         self.current_sequence = []
         self.current_step_index = 0
         self.current_monitor = None
         self.last_click_coords = (-100, -100)
 
-        self.pointer = PointerWindow(
+        self.pointer = AnimatedPointerWindow(
             self, on_valid_click_callback=self.next_sequence_step
         )
         pygame.mixer.init()
@@ -575,7 +630,9 @@ class VisionAssistantApp(ctk.CTk):
         )
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.header_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.header_frame = ctk.CTkFrame(
+            self.main_frame, fg_color="transparent"
+        )
         self.header_frame.pack(side="top", fill="x", padx=10, pady=(10, 0))
 
         self.header_label = ctk.CTkLabel(
@@ -714,6 +771,12 @@ class VisionAssistantApp(ctk.CTk):
         self.set_status("🟢 Prêt", "#55efc4", "idle")
 
     def process_request(self, use_vision):
+        # Garde-fou anti-concurrence : si une analyse tourne déjà, on ignore
+        # cette nouvelle demande au lieu de lancer un 2e appel API en parallèle.
+        if self.is_processing:
+            print("⏳ [Garde-fou] Analyse déjà en cours, requête ignorée.")
+            return
+
         prompt = self.entry.get().strip()
         self.entry.delete(0, tk.END)
 
@@ -724,6 +787,7 @@ class VisionAssistantApp(ctk.CTk):
             self.current_workflow_goal = "Assistance et guidage sur l'écran"
 
         self.workflow_active = True
+        self.is_processing = True
         self.current_sequence = []
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
@@ -733,43 +797,13 @@ class VisionAssistantApp(ctk.CTk):
             daemon=True,
         ).start()
 
-    def wait_for_page_to_load(self, timeout=6.0, stability_duration=1.0):
-        time.sleep(0.5)
-        start_time = time.time()
-        last_change_time = time.time()
-        prev_img = None
-
-        with mss.MSS() as sct:
-            monitor = self.get_active_monitor()
-            while (time.time() - start_time) < timeout:
-                sct_img = sct.grab(monitor)
-                curr_img = Image.frombytes(
-                    "RGB", sct_img.size, sct_img.bgra, "raw", "BGRX"
-                ).resize((160, 120))
-
-                if prev_img is not None:
-                    diff = ImageChops.difference(curr_img, prev_img)
-                    stat = ImageStat.Stat(diff)
-                    diff_score = sum(stat.mean)
-
-                    if diff_score > 1.2:
-                        last_change_time = time.time()
-                    else:
-                        if (
-                            time.time() - last_change_time
-                        ) >= stability_duration:
-                            break
-
-                prev_img = curr_img
-                time.sleep(0.2)
-
     def autonomous_agent_step(self, use_vision):
-        if not self.workflow_active:
-            return
         try:
+            if not self.workflow_active:
+                return
             if use_vision:
                 self.avatar.withdraw()
-                time.sleep(0.15)
+                time.sleep(0.1)
 
                 with mss.MSS() as sct:
                     monitor = self.get_active_monitor()
@@ -778,96 +812,58 @@ class VisionAssistantApp(ctk.CTk):
                         "RGB", sct_img.size, sct_img.bgra, "raw", "BGRX"
                     )
                     img.thumbnail((768, 768))
-                    buffer = io.BytesIO()
-                    img.save(buffer, format="JPEG", quality=75)
-                    image_bytes = buffer.getvalue()
                     self.current_monitor = monitor
 
                 self.avatar.deiconify()
 
-                sys_prompt = f"""Tu es un assistant visuel autonome. L'utilisateur veut : "{self.current_workflow_goal}"
-
-INSTRUCTIONS STRICTES :
-1. Si un bouton ou champ utile pour avancer est cliquable, réponds au format :
-   [STEP] [CLICK: X, Y] Phrase d'explication.
-   (X et Y sont les coordonnées de 0 à 1000).
-
-2. SÉCURITÉ MODALE/POP-UP : Si une pop-up (ex: paiement) vient d'être validée ou est en cours de traitement, NE CLIQUE PAS sur les éléments en arrière-plan. Utilise la balise :
-   [WAIT] Traitement en cours, veuillez patienter.
-
-3. Si la page est EN COURS DE CHARGEMENT, de redirection, ou d'animation :
-   [WAIT] La page charge la suite.
-
-4. Si l'objectif final est atteint :
-   [COMPLETED] Tâche terminée avec succès.
-
-5. Pour une question textuelle simple sans action :
-   Réponds normalement par du texte."""
-
-                pil_img = Image.open(io.BytesIO(image_bytes))
-
-                response = self.client.models.generate_content(
-                    model="gemini-3.5-flash", contents=[sys_prompt, pil_img]
+                decision = self.ai_engine.process_screen_and_intent(
+                    img, self.current_workflow_goal
                 )
-                response_text = response.text.strip()
+
+                if isinstance(decision, dict):
+                    action = decision.get("action", "none")
+                    response_text = decision.get(
+                        "text", "Je ne trouve pas d'action claire à faire."
+                    )
+                    x = decision.get("x")
+                    y = decision.get("y")
+
+                    self.append_to_chat(response_text, is_user=False)
+
+                    if action == "click" and x is not None and y is not None:
+                        self.current_sequence = [
+                            {
+                                "x": int(x),
+                                "y": int(y),
+                                "text": response_text,
+                            }
+                        ]
+                        self.current_step_index = 0
+                        self.after(
+                            0,
+                            lambda: self.execute_sequence_step(
+                                self.current_step_index
+                            ),
+                        )
+                    else:
+                        self.speak(response_text)
+                        self.after(0, self.stop_agent_workflow)
+
+                else:
+                    response_text = str(decision)
+                    self.append_to_chat(f"{response_text}", is_user=False)
+                    self.speak(response_text)
+                    self.after(0, self.stop_agent_workflow)
+
             else:
                 response = self.client.models.generate_content(
-                    model="gemini-3.5-flash",
+                    model="gemini-3.5-flash-lite",
                     contents=[self.current_workflow_goal],
                 )
                 response_text = response.text.strip()
-
-            self.append_to_chat(f"{response_text}", is_user=False)
-
-            pattern = r"\[STEP\]\s*\[CLICK:\s*(\d+),\s*(\d+)\]\s*(.*?)(?=\[STEP\]|\[WAIT\]|\[COMPLETED\]|$)"
-            matches = list(re.finditer(pattern, response_text, re.DOTALL))
-
-            if matches and use_vision:
-                self.current_sequence = [
-                    {
-                        "x": int(m.group(1)),
-                        "y": int(m.group(2)),
-                        "text": m.group(3).strip(),
-                    }
-                    for m in matches
-                ]
-                self.current_step_index = 0
-                self.after(
-                    0,
-                    lambda: self.execute_sequence_step(self.current_step_index),
-                )
-            elif "[WAIT]" in response_text:
-                clean_text = response_text.replace("[WAIT]", "").strip()
-                self.speak(
-                    clean_text if clean_text else "Chargement en cours..."
-                )
-                self.set_status(
-                    "⏳ Attente du chargement...", "#f39c12", "scan"
-                )
-                self.after(
-                    2000, lambda: self.process_request(use_vision=True)
-                )
-            elif "[COMPLETED]" in response_text:
-                clean_text = response_text.replace("[COMPLETED]", "").strip()
-                self.speak(
-                    clean_text
-                    if clean_text
-                    else "Tâche terminée avec succès !"
-                )
-                self.after(0, self.stop_agent_workflow)
-            else:
+                self.append_to_chat(f"{response_text}", is_user=False)
                 self.speak(response_text)
-                if self.workflow_active and self.current_workflow_goal:
-                    self.set_status(
-                        "⚡ Analyse de confirmation...", "#3498db", "scan"
-                    )
-                    self.after(
-                        2000, lambda: self.process_request(use_vision=True)
-                    )
-                else:
-                    self.after(
-                        0, lambda: self.set_status("🟢 Prêt", "#55efc4", "idle")
-                    )
+                self.after(0, self.stop_agent_workflow)
 
         except Exception as e:
             err_msg = str(e)
@@ -887,6 +883,10 @@ INSTRUCTIONS STRICTES :
                     0, lambda: self.set_status("❌ Erreur", "#e74c3c", "idle")
                 )
                 self.after(0, self.stop_agent_workflow)
+        finally:
+            # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
+            # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
+            self.is_processing = False
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:
@@ -896,10 +896,6 @@ INSTRUCTIONS STRICTES :
             self.pointer.hide()
 
             def _wait_and_reprocess():
-                self.set_status(
-                    "⏳ Vérification de l'écran...", "#f1c40f", "scan"
-                )
-                self.wait_for_page_to_load()
                 self.set_status(
                     "⚡ Analyse de la suite...", "#00cec9", "scan"
                 )
@@ -919,7 +915,7 @@ INSTRUCTIONS STRICTES :
             self.set_status("⏳ Transition...", "#f39c12", "scan")
             self.speak("Je patiente pour laisser la page réagir.")
             self.last_click_coords = (-100, -100)
-            self.after(2000, lambda: self.process_request(use_vision=True))
+            self.after(1000, lambda: self.process_request(use_vision=True))
             return
 
         self.last_click_coords = (step["x"], step["y"])
@@ -968,7 +964,8 @@ INSTRUCTIONS STRICTES :
             recognizer = sr.Recognizer()
             try:
                 self.after(
-                    0, lambda: self.set_status("🎙️ Écoute...", "#ff7675", "speak")
+                    0,
+                    lambda: self.set_status("🎙️ Écoute...", "#ff7675", "speak"),
                 )
                 self.after(
                     0,
@@ -987,9 +984,7 @@ INSTRUCTIONS STRICTES :
                 self.after(0, lambda: self.append_to_chat(text, is_user=True))
                 self.after(
                     0,
-                    lambda: self.process_custom_prompt(
-                        text, use_vision=True
-                    ),
+                    lambda: self.process_custom_prompt(text, use_vision=True),
                 )
             except Exception:
                 self.after(
