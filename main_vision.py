@@ -31,6 +31,44 @@ ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
 
 
+class CTkToolTip:
+    """Affiche une info-bulle au survol d'un composant pour l'accessibilité."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip, add="+")
+        self.widget.bind("<Leave>", self.hide_tooltip, add="+")
+
+    def show_tooltip(self, event=None):
+        if self.tooltip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 10
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        tw.wm_attributes("-topmost", True)
+        lbl = tk.Label(
+            tw,
+            text=self.text,
+            bg=FRAME_BG,
+            fg=TEXT_COLOR,
+            relief="solid",
+            bd=1,
+            font=("Segoe UI", 9),
+            padx=6,
+            pady=3,
+        )
+        lbl.pack()
+
+    def hide_tooltip(self, event=None):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
+
+
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
 
 
@@ -283,6 +321,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6))
+        CTkToolTip(self.btn_vision, "Analyser l'écran (F9)")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -293,6 +332,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+        CTkToolTip(self.btn_send, "Envoyer la demande (Entrée)")
 
         self.withdraw()
 
@@ -695,6 +735,8 @@ class VisionAssistantApp(ctk.CTk):
         self.entry.bind(
             "<Return>", lambda event: self.process_request(use_vision=True)
         )
+        self.entry.bind("<Escape>", lambda event: self.toggle_main_window())
+        self.bind("<Escape>", lambda event: self.toggle_main_window())
 
         self.btn_vision = ctk.CTkButton(
             self.input_frame,
@@ -707,6 +749,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6), pady=8)
+        CTkToolTip(self.btn_vision, "Analyser l'écran (F9)")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -718,6 +761,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+        CTkToolTip(self.btn_send, "Envoyer la demande (Entrée)")
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
