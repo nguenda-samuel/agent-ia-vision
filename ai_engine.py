@@ -1,5 +1,6 @@
 import json
 import time
+# Security: Import secure parameterized SQLite database cache
 from database import get_cached_answer, save_answer
 from google import genai
 from google.genai import types
