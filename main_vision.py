@@ -502,9 +502,15 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if self.canvas.type(self.img_id) == "oval":
+            cx_val, cy_val = self.size // 2, (self.size // 2) + offset_y
+            self.canvas.coords(
+                self.img_id, cx_val - 30, cy_val - 30, cx_val + 30, cy_val + 30
+            )
+        else:
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -698,12 +704,12 @@ class VisionAssistantApp(ctk.CTk):
 
         self.btn_vision = ctk.CTkButton(
             self.input_frame,
-            text="📸",
-            width=45,
+            text="📸 Écran",
+            width=85,
             height=40,
             fg_color=USER_BUBBLE,
             hover_color="#5f27cd",
-            font=ctk.CTkFont(size=16),
+            font=ctk.CTkFont(weight="bold"),
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6), pady=8)
@@ -744,6 +750,7 @@ class VisionAssistantApp(ctk.CTk):
         self.hotkey_listener.start()
 
         self.protocol("WM_DELETE_WINDOW", self.toggle_main_window)
+        self.bind("<Escape>", lambda event: self.toggle_main_window() if self.main_window_visible else None)
 
     def toggle_main_window(self):
         if self.main_window_visible:
@@ -751,6 +758,9 @@ class VisionAssistantApp(ctk.CTk):
             self.main_window_visible = False
         else:
             self.deiconify()
+            self.lift()
+            self.focus_force()
+            self.entry.focus_set()
             self.main_window_visible = True
 
     def process_custom_prompt(self, text, use_vision=True):
