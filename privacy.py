@@ -25,7 +25,8 @@ class PrivacyFilter:
                 roi, (99, 99), 30
             )
 
-        # Floutage des champs de saisie rectangulaires (ex: mots de passe)
+        # Masquage opaque (solide) des champs de saisie rectangulaires (ex: mots de passe)
+        # Sécurité : le floutage est réversible via déconvolution ; un rectangle noir élimine tout risque de fuite.
         _, thresh = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(
             thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
@@ -34,9 +35,6 @@ class PrivacyFilter:
         for cnt in contours:
             x, y, w, h = cv2.boundingRect(cnt)
             if 100 < w < 400 and 20 < h < 60:
-                roi = open_cv_image[y : y + h, x : x + w]
-                open_cv_image[y : y + h, x : x + w] = cv2.GaussianBlur(
-                    roi, (51, 51), 0
-                )
+                cv2.rectangle(open_cv_image, (x, y), (x + w, y + h), (0, 0, 0), -1)
 
         return Image.fromarray(cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2RGB))
