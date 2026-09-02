@@ -1,5 +1,7 @@
 *
 !.gitignore
+!.Jules/
+!.Jules/*
 !main_vision.py
 !privacy.py
 !stream.py
