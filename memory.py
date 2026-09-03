@@ -23,6 +23,14 @@ class ActionMemory:
                 )
             """
             )
+            # ⚡ Optimization (Bolt): Add composite index on screen_hash and user_intent
+            # to significantly speed up routine lookups in get_routine() as table grows.
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_routines_hash_intent
+                ON routines(screen_hash, user_intent)
+            """
+            )
             conn.commit()
 
     def save_routine(
