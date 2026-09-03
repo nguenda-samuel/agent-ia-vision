@@ -1,0 +1,4 @@
+## 2026-09-03 - SQLite Cache Parameterized Queries against SQL Injection
+**Vulnerability:** The AI engine caching layer queried and saved user intents (`user_intent`) in SQLite cache without parameterization or proper module implementation, risking SQL injection attacks if string concatenation or unescaped inputs were used.
+**Learning:** `ai_engine.py` referenced `get_cached_answer` and `save_answer` from `database`, but `database.py` was missing or excluded. When implementing database storage for user input/intents, raw string interpolation in SQL statements allows query injection or table corruption.
+**Prevention:** Always use parameterized SQL queries (`?` placeholders in SQLite) for user inputs, and ensure all database modules are committed and covered by unit tests validating SQL injection payloads.
