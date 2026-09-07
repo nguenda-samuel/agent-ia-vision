@@ -21,6 +21,9 @@ class AIEngine:
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
 
+        # SECURITY: Sanitize user input and limit length to mitigate DoS and prompt injection risks
+        user_intent = user_intent.strip()[:1000] if isinstance(user_intent, str) else ""
+
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
         # -------------------------------------------------------------
@@ -58,8 +61,10 @@ class AIEngine:
         print("[Gemini] Analyse de l'image via l'API...")
         
         # Le code que tu dois copier-coller :
+        # SECURITY: Escape quotes to prevent prompt framing breakout
+        safe_intent = user_intent.replace('"', '\\"')
         prompt = f"""
-        Tu es un assistant virtuel qui regarde l'écran d'un utilisateur pour l'aider à accomplir : "{user_intent}".
+        Tu es un assistant virtuel qui regarde l'écran d'un utilisateur pour l'aider à accomplir : "{safe_intent}".
         Réponds STRICTEMENT avec un objet JSON au format suivant :
         {{
             "action": "click" ou "wait" ou "none",
