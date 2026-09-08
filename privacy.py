@@ -11,9 +11,14 @@ class PrivacyFilter:
         )
 
     def redact_sensitive_data(self, pil_image: Image.Image) -> Image.Image:
+        # pil_image is in RGB format. Convert PIL image to NumPy RGB array directly.
         open_cv_image = np.array(pil_image)
-        open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
-        gray = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
+
+        # Optimization ⚡: Convert RGB directly to GRAY, avoiding redundant
+        # RGB->BGR and BGR->RGB color space conversions. Gaussian blur operations
+        # are channel-order invariant, so blurring ROIs directly in the RGB array
+        # avoids allocating 2 full-frame image array copies per screenshot.
+        gray = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2GRAY)
 
         # Floutage automatique des visages à l'écran
         faces = self.face_cascade.detectMultiScale(
@@ -39,4 +44,4 @@ class PrivacyFilter:
                     roi, (51, 51), 0
                 )
 
-        return Image.fromarray(cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2RGB))
+        return Image.fromarray(open_cv_image)
