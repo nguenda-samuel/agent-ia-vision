@@ -1,6 +1,5 @@
 import json
 import time
-from database import get_cached_answer, save_answer
 from google import genai
 from google.genai import types
 from memory import ActionMemory
@@ -21,23 +20,37 @@ class AIEngine:
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
 
+        # Security: Input validation & sanitization (mitigate DoS & prompt injection)
+        if not user_intent or not isinstance(user_intent, str):
+            user_intent = "Assistance et guidage sur l'écran"
+
+        # Remove control characters and limit prompt length to prevent resource exhaustion / DoS
+        user_intent = "".join(ch for ch in user_intent if ch.isprintable()).strip()
+        if len(user_intent) > 500:
+            user_intent = user_intent[:500]
+
+        if not user_intent:
+            user_intent = "Assistance et guidage sur l'écran"
+
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
         # -------------------------------------------------------------
         # Nous ne vérifions le cache QUE si c'est une requête PUREMENT textuelle.
         # Si nous avons une capture d'écran, nous DEVONS analyser l'image actuelle.
-        cached_response = get_cached_answer(user_intent)
+        cached_response = self.memory.get_routine(screen_hash="", user_intent=user_intent)
 
         # On n'utilise le cache que si raw_screenshot est absent/None.
         if cached_response and not raw_screenshot:
             print(
                 f"⚡ [DB Cache] Réponse textuelle trouvée pour '{user_intent}' (Instantané) !"
             )
+            if isinstance(cached_response, dict):
+                return cached_response
             try:
                 # On reconvertit le texte sauvegardé en dictionnaire JSON
                 return json.loads(cached_response)
             except Exception:
-                return {"action": "none", "text": cached_response}
+                return {"action": "none", "text": str(cached_response)}
 
         # -------------------------------------------------------------
         # 2. Si pas en cache, ou si vision requise : on traite
@@ -105,8 +118,8 @@ class AIEngine:
                 # Nous sauvegardons la réponse UNIQUEMENT si nous avons dû appeler Gemini.
                 # Et nous ne sauvegardons QUE les réponses textuelles d'intérêt (pas les actions de clic)
                 # Note: ici, on sauvegarde la réponse JSON complète pour le moment.
-                save_answer(
-                    user_intent, json.dumps(action_result, ensure_ascii=False)
+                self.memory.save_routine(
+                    screen_hash="", user_intent=user_intent, action_data=action_result
                 )
 
                 return action_result
