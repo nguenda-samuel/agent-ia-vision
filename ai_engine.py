@@ -26,6 +26,7 @@ class AIEngine:
         # -------------------------------------------------------------
         # Nous ne vérifions le cache QUE si c'est une requête PUREMENT textuelle.
         # Si nous avons une capture d'écran, nous DEVONS analyser l'image actuelle.
+        # Security: Retrieve cached answer using database module (parameterized SQL)
         cached_response = get_cached_answer(user_intent)
 
         # On n'utilise le cache que si raw_screenshot est absent/None.
