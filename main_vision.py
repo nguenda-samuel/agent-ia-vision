@@ -59,6 +59,7 @@ class AnimatedPointerWindow(tk.Toplevel):
             height=self.size,
             bg=self.trans_color,
             highlightthickness=0,
+            cursor="hand2",
         )
         self.canvas.pack(fill="both", expand=True)
 
@@ -424,6 +425,7 @@ class AvatarWindow(tk.Toplevel):
             height=self.size,
             bg=self.trans_color,
             highlightthickness=0,
+            cursor="hand2",
         )
         self.canvas.pack(fill="both", expand=True)
 
@@ -502,11 +504,15 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        cy_lev = (self.size // 2) + offset_y
+        if self.canvas.type(self.img_id) == "image":
+            self.canvas.coords(self.img_id, self.size // 2, cy_lev)
+        else:
+            self.canvas.coords(
+                self.img_id, 25, cy_lev - 30, self.size - 25, cy_lev + 30
+            )
 
-        cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
+        cx, cy, r = self.size // 2, cy_lev, 35
 
         if self.state == "idle":
             width = 2 + math.sin(time.time() * 3) * 1.5
@@ -695,6 +701,7 @@ class VisionAssistantApp(ctk.CTk):
         self.entry.bind(
             "<Return>", lambda event: self.process_request(use_vision=True)
         )
+        self.bind("<Escape>", lambda event: self.toggle_main_window())
 
         self.btn_vision = ctk.CTkButton(
             self.input_frame,
@@ -769,6 +776,8 @@ class VisionAssistantApp(ctk.CTk):
         self.last_click_coords = (-100, -100)
         self.pointer.hide()
         self.stop_audio()
+        self.btn_send.configure(state="normal")
+        self.btn_vision.configure(state="normal")
         self.set_status("🟢 Prêt", "#55efc4", "idle")
 
     def process_request(self, use_vision):
@@ -789,6 +798,8 @@ class VisionAssistantApp(ctk.CTk):
 
         self.workflow_active = True
         self.is_processing = True
+        self.btn_send.configure(state="disabled")
+        self.btn_vision.configure(state="disabled")
         self.current_sequence = []
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
@@ -925,6 +936,12 @@ class VisionAssistantApp(ctk.CTk):
             # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
             # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
             self.is_processing = False
+            if not self.workflow_active:
+                self.after(0, self._enable_submit_buttons)
+
+    def _enable_submit_buttons(self):
+        self.btn_send.configure(state="normal")
+        self.btn_vision.configure(state="normal")
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:

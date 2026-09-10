@@ -1,0 +1,3 @@
+## 2026-09-04 - Desktop Window Keyboard Dismissal & Action State Affordance
+**Learning:** In Tkinter/CustomTkinter desktop agent applications, interactive canvas overlays require explicit `cursor="hand2"` affordance, and top-level overlay windows should support `<Escape>` key binding for rapid keyboard dismissal. Async submit buttons (like vision scan and prompt send) require explicit disabled states during active execution to prevent double-submits and signal progress.
+**Action:** Always bind `<Escape>` on top-level interactive popup windows, set hand hover cursors on draggable canvas elements, and manage button disabled states during async operations.
