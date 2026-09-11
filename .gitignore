@@ -1,5 +1,7 @@
 *
 !.gitignore
+!.jules/
+!.jules/bolt.md
 !main_vision.py
 !privacy.py
 !stream.py
