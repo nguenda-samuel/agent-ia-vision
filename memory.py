@@ -23,6 +23,14 @@ class ActionMemory:
                 )
             """
             )
+            # Index composé pour accélérer la recherche par screen_hash et user_intent (get_routine).
+            # Impact perf: Réduit le temps de lookup de O(N) à O(log N), évitant un scan complet de table.
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_routines_hash_intent
+                ON routines (screen_hash, user_intent)
+            """
+            )
             conn.commit()
 
     def save_routine(
