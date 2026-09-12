@@ -695,6 +695,7 @@ class VisionAssistantApp(ctk.CTk):
         self.entry.bind(
             "<Return>", lambda event: self.process_request(use_vision=True)
         )
+        self.bind("<Escape>", lambda event: self.toggle_main_window())
 
         self.btn_vision = ctk.CTkButton(
             self.input_frame,
@@ -751,6 +752,9 @@ class VisionAssistantApp(ctk.CTk):
             self.main_window_visible = False
         else:
             self.deiconify()
+            self.lift()
+            self.focus_force()
+            self.entry.focus_set()
             self.main_window_visible = True
 
     def process_custom_prompt(self, text, use_vision=True):
