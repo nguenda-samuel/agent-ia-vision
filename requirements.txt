@@ -7,7 +7,7 @@ pygame
 pynput
 PyQt6
 SpeechRecognition
-opencv-python
+opencv-python==4.10.0.84
 imagehash
 numpy
 pyaudio
