@@ -4,5 +4,6 @@
 !privacy.py
 !stream.py
 !memory.py
+!test_memory.py
 !ai_engine.py
 !requirements.txt
