@@ -1,5 +1,6 @@
 import json
 import time
+# Secure database caching layer for text query intent answers (parameterized SQL)
 from database import get_cached_answer, save_answer
 from google import genai
 from google.genai import types
@@ -26,6 +27,7 @@ class AIEngine:
         # -------------------------------------------------------------
         # Nous ne vérifions le cache QUE si c'est une requête PUREMENT textuelle.
         # Si nous avons une capture d'écran, nous DEVONS analyser l'image actuelle.
+        # SECURITY: Retrieve response from cache via parameterized database query
         cached_response = get_cached_answer(user_intent)
 
         # On n'utilise le cache que si raw_screenshot est absent/None.
