@@ -9,7 +9,7 @@ class ActionMemory:
         self._init_db()
 
     def _init_db(self):
-        """Initialise la table SQLite pour enregistrer les routines."""
+        """Initialise la table SQLite pour enregistrer les routines et cree l'index de performance."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -21,6 +21,14 @@ class ActionMemory:
                     action_data TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
+            """
+            )
+            # ⚡ [Bolt Optimization]: Speed up routine lookup by screen_hash & user_intent.
+            # Avoids O(N) full-table scans in get_routine() as routines table grows.
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_routines_hash_intent
+                ON routines (screen_hash, user_intent)
             """
             )
             conn.commit()
