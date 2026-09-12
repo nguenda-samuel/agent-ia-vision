@@ -21,6 +21,11 @@ class AIEngine:
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
 
+        # Input validation and length limit to prevent DoS and prompt injection risks
+        if not isinstance(user_intent, str):
+            user_intent = ""
+        user_intent = user_intent.strip()[:1000]
+
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
         # -------------------------------------------------------------
@@ -131,4 +136,3 @@ class AIEngine:
                         "action": "none",
                         "text": "Désolé, je n'ai pas pu analyser l'écran.",
                     }
-
