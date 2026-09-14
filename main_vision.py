@@ -31,6 +31,65 @@ ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
 
 
+# ==================== INFO-BULLES / TOOLTIPS ====================
+
+
+class CTkToolTip:
+    """Affiche une info-bulle contextuelle lors du survol d'un composant CTk/Tk."""
+
+    def __init__(self, widget, text, delay=300):
+        self.widget = widget
+        self.text = text
+        self.delay = delay
+        self.tooltip_window = None
+        self.id = None
+
+        self.widget.bind("<Enter>", self.schedule_tooltip, add="+")
+        self.widget.bind("<Leave>", self.hide_tooltip, add="+")
+        self.widget.bind("<ButtonPress>", self.hide_tooltip, add="+")
+
+    def schedule_tooltip(self, event=None):
+        self.unschedule()
+        self.id = self.widget.after(self.delay, self.show_tooltip)
+
+    def unschedule(self):
+        if self.id:
+            self.widget.after_cancel(self.id)
+            self.id = None
+
+    def show_tooltip(self):
+        if self.tooltip_window or not self.text:
+            return
+
+        x = self.widget.winfo_rootx() + (self.widget.winfo_width() // 2)
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
+
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_attributes("-topmost", True)
+        tw.geometry(f"+{x}+{y}")
+
+        label = tk.Label(
+            tw,
+            text=self.text,
+            justify="left",
+            background=FRAME_BG,
+            foreground=TEXT_COLOR,
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9, "normal"),
+            padx=6,
+            pady=3,
+        )
+        label.pack()
+
+    def hide_tooltip(self, event=None):
+        self.unschedule()
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
+
+
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
 
 
@@ -293,6 +352,9 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+
+        CTkToolTip(self.btn_vision, "Analyser l'écran (F9)")
+        CTkToolTip(self.btn_send, "Envoyer l'instruction")
 
         self.withdraw()
 
@@ -718,6 +780,9 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+
+        CTkToolTip(self.btn_vision, "Analyser l'écran (F9)")
+        CTkToolTip(self.btn_send, "Envoyer l'instruction")
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
