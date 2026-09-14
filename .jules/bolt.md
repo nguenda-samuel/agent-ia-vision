@@ -1,0 +1,3 @@
+## 2025-05-18 - Avoid Redundant OpenCV Color Space Conversions
+**Learning:** In image processing pipelines using PIL and OpenCV (`np.array(pil_image)`), images are naturally in RGB format. Converting RGB->BGR before `cv2.cvtColor(..., COLOR_BGR2GRAY)` and converting back BGR->RGB at the end adds ~30% unnecessary CPU processing overhead per full-HD image frame. OpenCV functions like `cv2.cvtColor(img, COLOR_RGB2GRAY)` and `cv2.GaussianBlur` work directly on RGB numpy arrays without needing BGR ordering.
+**Action:** Keep PIL numpy arrays in RGB format throughout OpenCV manipulations unless specific BGR-dependent features are used.
