@@ -1,0 +1,3 @@
+## 2026-09-15 - Visual Feedback and State Management for Async Operations in CustomTkinter
+**Learning:** In desktop GUI applications (CustomTkinter), triggering background AI processing without disabling action buttons leaves the user uncertain if their click was registered, encouraging duplicate clicks and quota exhaustion. Disabling action buttons during async execution and restoring them in `finally` blocks gives immediate visual feedback.
+**Action:** Always disable action buttons (`btn.configure(state="disabled")`) when starting async workflows in CustomTkinter and ensure state restoration in `finally` handlers or reset routines.
