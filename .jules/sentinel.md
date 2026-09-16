@@ -1,0 +1,4 @@
+## 2026-09-16 - Parameterized Queries for SQLite Database Cache & Whitelist .gitignore Constraints
+**Vulnerability:** The application imported `database` functions (`get_cached_answer`, `save_answer`) in `ai_engine.py` without a `database.py` implementation, creating potential SQL injection risks if non-parameterized raw SQL string interpolation were used on user intents.
+**Learning:** In projects using an explicit `.gitignore` whitelist rule (`*` ignored by default with `!filename` un-ignore rules), newly added Python modules and test files (`database.py`, `test_database.py`, `.jules/`) must be explicitly un-ignored in `.gitignore`, otherwise git will ignore them.
+**Prevention:** Always use parameterized SQL placeholders (`?` in SQLite) for user-supplied inputs and ensure new python files are explicitly added to `.gitignore` when default-deny rules exist.
