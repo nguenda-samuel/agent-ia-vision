@@ -1,0 +1,3 @@
+## 2026-09-16 - Accessible Tooltips for CustomTkinter Icon Buttons
+**Learning:** Icon-only buttons (such as `📸` or `🚀`) in CustomTkinter GUIs lack native tooltips or screen-reader accessible text, making them ambiguous for users relying on visual hover context or keyboard focus navigation. Adding a lightweight `CTkToolTip` component bound to both mouse hover (`<Enter>`) and focus events (`<FocusIn>`) provides clear visual hover and focus feedback without changing button layouts.
+**Action:** Always wrap icon-only CTkButton widgets with `CTkToolTip` or equivalent hover/focus bindings to describe the action in plain language.

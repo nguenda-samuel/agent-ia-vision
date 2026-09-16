@@ -31,6 +31,73 @@ ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
 
 
+# ==================== COMPOSANT TOOLTIP ACCESSIBLE ====================
+
+
+class CTkToolTip:
+    """Bulle d'aide accessible pour les composants Tkinter / CustomTkinter."""
+
+    def __init__(self, widget, text, delay_ms=400):
+        self.widget = widget
+        self.text = text
+        self.delay_ms = delay_ms
+        self.tooltip_window = None
+        self.timer_id = None
+
+        self.widget.bind("<Enter>", self.schedule_show)
+        self.widget.bind("<Leave>", self.hide)
+        self.widget.bind("<FocusIn>", self.schedule_show)
+        self.widget.bind("<FocusOut>", self.hide)
+
+    def schedule_show(self, event=None):
+        self.cancel_timer()
+        self.timer_id = self.widget.after(self.delay_ms, self.show)
+
+    def cancel_timer(self):
+        if self.timer_id:
+            self.widget.after_cancel(self.timer_id)
+            self.timer_id = None
+
+    def show(self):
+        if self.tooltip_window or not self.text:
+            return
+
+        try:
+            x = self.widget.winfo_rootx() + (self.widget.winfo_width() // 2)
+            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
+        except Exception:
+            return
+
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_attributes("-topmost", True)
+
+        label = tk.Label(
+            tw,
+            text=self.text,
+            justify="left",
+            background=FRAME_BG,
+            foreground=TEXT_COLOR,
+            relief="solid",
+            borderwidth=1,
+            highlightthickness=1,
+            highlightbackground=ACCENT_COLOR,
+            font=("Segoe UI", 10),
+            padx=8,
+            pady=4,
+        )
+        label.pack()
+
+        tw.update_idletasks()
+        tw.geometry(f"+{max(0, x - (tw.winfo_reqwidth() // 2))}+{y}")
+
+    def hide(self, event=None):
+        self.cancel_timer()
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
+
+
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
 
 
@@ -283,6 +350,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6))
+        CTkToolTip(self.btn_vision, "Analyser l'écran avec votre instruction")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -293,6 +361,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+        CTkToolTip(self.btn_send, "Envoyer la commande")
 
         self.withdraw()
 
@@ -653,6 +722,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.quick_input.show_and_focus(),
         )
         self.btn_quick.pack(side="right", padx=3)
+        CTkToolTip(self.btn_quick, "Ouvrir la fenêtre de saisie rapide")
 
         self.btn_hide = ctk.CTkButton(
             self.header_frame,
@@ -663,6 +733,7 @@ class VisionAssistantApp(ctk.CTk):
             command=self.toggle_main_window,
         )
         self.btn_hide.pack(side="right", padx=3)
+        CTkToolTip(self.btn_hide, "Masquer la fenêtre principale")
 
         self.lbl_status = ctk.CTkLabel(
             self.main_frame,
@@ -707,6 +778,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6), pady=8)
+        CTkToolTip(self.btn_vision, "Analyser l'écran actuel")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -718,6 +790,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+        CTkToolTip(self.btn_send, "Envoyer la commande")
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
