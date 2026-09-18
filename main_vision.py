@@ -216,6 +216,48 @@ class AnimatedPointerWindow(tk.Toplevel):
         self.geometry("+-300+-300")
 
 
+# ==================== COMPOSANT INFOBULLE (ACCESSIBILITÉ) ====================
+
+
+class ToolTip:
+    """Affiche une infobulle au survol pour améliorer l'accessibilité des boutons."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tip_window = None
+        self.widget.bind("<Enter>", self.show_tip)
+        self.widget.bind("<Leave>", self.hide_tip)
+
+    def show_tip(self, event=None):
+        if self.tip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 10
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        tw.wm_attributes("-topmost", True)
+        label = tk.Label(
+            tw,
+            text=self.text,
+            justify=tk.LEFT,
+            background=FRAME_BG,
+            foreground=TEXT_COLOR,
+            relief=tk.SOLID,
+            borderwidth=1,
+            font=("Segoe UI", 9, "normal"),
+            padx=6,
+            pady=4,
+        )
+        label.pack(ipadx=1)
+
+    def hide_tip(self, event=None):
+        if self.tip_window:
+            self.tip_window.destroy()
+            self.tip_window = None
+
+
 # ==================== MINI-FENÊTRE DE SAISIE RAPIDE ====================
 
 
@@ -283,6 +325,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6))
+        ToolTip(self.btn_vision, "Analyser l'écran (F9)")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -293,6 +336,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+        ToolTip(self.btn_send, "Envoyer l'instruction (Entrée)")
 
         self.withdraw()
 
@@ -308,7 +352,7 @@ class QuickInputWindow(ctk.CTkToplevel):
         self.withdraw()
         if text:
             self.app.append_to_chat(text, is_user=True)
-            self.app.process_custom_prompt(text, use_vision=use_vision)
+        self.app.process_custom_prompt(text, use_vision=use_vision)
 
 
 # ==================== SOUS-TITRES ET VISUALISEUR AUDIO ====================
@@ -707,6 +751,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6), pady=8)
+        ToolTip(self.btn_vision, "Analyser l'écran (F9)")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -718,6 +763,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+        ToolTip(self.btn_send, "Envoyer l'instruction (Entrée)")
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
@@ -758,12 +804,20 @@ class VisionAssistantApp(ctk.CTk):
         self.entry.insert(0, text)
         self.process_request(use_vision=use_vision)
 
+    def set_input_state(self, state: str):
+        """Active ou désactive la saisie et les boutons d'action durant les opérations asynchrones."""
+        self.entry.configure(state=state)
+        self.btn_vision.configure(state=state)
+        self.btn_send.configure(state=state)
+
     def set_status(self, text, color="#55efc4", avatar_state="idle"):
         self.lbl_status.configure(text=text, text_color=color)
         self.avatar.set_state(avatar_state)
 
     def stop_agent_workflow(self):
         self.workflow_active = False
+        self.is_processing = False
+        self.set_input_state("normal")
         self.current_workflow_goal = None
         self.current_sequence = []
         self.last_click_coords = (-100, -100)
@@ -789,6 +843,7 @@ class VisionAssistantApp(ctk.CTk):
 
         self.workflow_active = True
         self.is_processing = True
+        self.set_input_state("disabled")
         self.current_sequence = []
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
@@ -925,6 +980,7 @@ class VisionAssistantApp(ctk.CTk):
             # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
             # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
             self.is_processing = False
+            self.after(0, lambda: self.set_input_state("normal"))
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:
