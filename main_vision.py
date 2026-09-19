@@ -286,10 +286,10 @@ class QuickInputWindow(ctk.CTkToplevel):
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
-            text="🚀",
-            width=45,
+            text="🚀 Envoyer",
+            width=90,
             height=42,
-            font=ctk.CTkFont(size=15, weight="bold"),
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
@@ -698,22 +698,22 @@ class VisionAssistantApp(ctk.CTk):
 
         self.btn_vision = ctk.CTkButton(
             self.input_frame,
-            text="📸",
-            width=45,
+            text="📸 Écran",
+            width=85,
             height=40,
             fg_color=USER_BUBBLE,
             hover_color="#5f27cd",
-            font=ctk.CTkFont(size=16),
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6), pady=8)
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
-            text="🚀",
-            width=45,
+            text="🚀 Envoyer",
+            width=95,
             height=40,
-            font=ctk.CTkFont(size=15),
+            font=ctk.CTkFont(size=13, weight="bold"),
             fg_color="#0984e3",
             command=lambda: self.process_request(use_vision=True),
         )
