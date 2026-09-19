@@ -1,6 +1,12 @@
 import json
+import re
 import time
-from database import get_cached_answer, save_answer
+try:
+    from database import get_cached_answer, save_answer
+except ImportError:
+    def get_cached_answer(intent): return None
+    def save_answer(intent, response): pass
+
 from google import genai
 from google.genai import types
 from memory import ActionMemory
@@ -16,10 +22,25 @@ class AIEngine:
         self.stream = ScreenStream()
         self.memory = ActionMemory()
 
+    def sanitize_user_intent(self, user_intent: str) -> str:
+        """Sanitizes user_intent input to prevent prompt injection and DoS attacks."""
+        if not user_intent or not isinstance(user_intent, str):
+            return "Assistance globale"
+
+        # Enforce maximum character length to prevent DoS/overflow
+        sanitized = user_intent[:500].strip()
+
+        # Strip ASCII control characters and quotes that break prompt context
+        sanitized = re.sub(r'[\x00-\x1f\x7f]', ' ', sanitized)
+        sanitized = sanitized.replace('"', "'")
+        return sanitized if sanitized else "Assistance globale"
+
     def process_screen_and_intent(
         self, raw_screenshot, user_intent: str
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
+        # Validate and sanitize user input against prompt injection / DoS
+        user_intent = self.sanitize_user_intent(user_intent)
 
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
