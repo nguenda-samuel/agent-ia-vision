@@ -1,0 +1,3 @@
+## 2026-09-20 - Redundant OpenCV color space conversions on PIL images
+**Learning:** Converting PIL RGB image arrays to BGR and back to RGB for OpenCV processing causes unnecessary frame copying and color space conversion overhead (~3ms per 1080p frame). OpenCV functions like `cv2.cvtColor(..., cv2.COLOR_RGB2GRAY)` and spatial filters like `cv2.GaussianBlur` work directly on RGB array representations without requiring BGR conversion.
+**Action:** Always inspect OpenCV pipeline operations when converting from PIL/RGB images, operating directly on RGB arrays unless BGR-specific features (such as OpenCV GUI image display) are explicitly required.
