@@ -758,6 +758,12 @@ class VisionAssistantApp(ctk.CTk):
         self.entry.insert(0, text)
         self.process_request(use_vision=use_vision)
 
+    def _set_inputs_disabled(self, disabled: bool):
+        state = "disabled" if disabled else "normal"
+        self.entry.configure(state=state)
+        self.btn_vision.configure(state=state)
+        self.btn_send.configure(state=state)
+
     def set_status(self, text, color="#55efc4", avatar_state="idle"):
         self.lbl_status.configure(text=text, text_color=color)
         self.avatar.set_state(avatar_state)
@@ -769,6 +775,7 @@ class VisionAssistantApp(ctk.CTk):
         self.last_click_coords = (-100, -100)
         self.pointer.hide()
         self.stop_audio()
+        self._set_inputs_disabled(False)
         self.set_status("🟢 Prêt", "#55efc4", "idle")
 
     def process_request(self, use_vision):
@@ -789,6 +796,7 @@ class VisionAssistantApp(ctk.CTk):
 
         self.workflow_active = True
         self.is_processing = True
+        self._set_inputs_disabled(True)
         self.current_sequence = []
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
@@ -925,6 +933,7 @@ class VisionAssistantApp(ctk.CTk):
             # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
             # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
             self.is_processing = False
+            self.after(0, lambda: self._set_inputs_disabled(False))
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:
