@@ -31,6 +31,49 @@ ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
 
 
+class ToolTip:
+    """Accompagne les boutons sans texte d'une info-bulle au survol et à la focalisation."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tip_window = None
+        self.widget.bind("<Enter>", self.show_tip)
+        self.widget.bind("<Leave>", self.hide_tip)
+        self.widget.bind("<FocusIn>", self.show_tip)
+        self.widget.bind("<FocusOut>", self.hide_tip)
+
+    def show_tip(self, event=None):
+        if self.tip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + (self.widget.winfo_width() // 2)
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        try:
+            tw.wm_attributes("-topmost", True)
+        except Exception:
+            pass
+        label = tk.Label(
+            tw,
+            text=self.text,
+            bg="#2a2b3d",
+            fg="#c8d3f5",
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9),
+            padx=6,
+            pady=3,
+        )
+        label.pack()
+
+    def hide_tip(self, event=None):
+        if self.tip_window:
+            self.tip_window.destroy()
+            self.tip_window = None
+
+
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
 
 
@@ -293,6 +336,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+        ToolTip(self.btn_send, "Envoyer l'instruction")
 
         self.withdraw()
 
@@ -437,6 +481,7 @@ class AvatarWindow(tk.Toplevel):
             self.img_id = self.canvas.create_image(
                 self.size // 2, self.size // 2, image=self.tk_img
             )
+            self.is_oval_fallback = False
         except Exception:
             self.img_id = self.canvas.create_oval(
                 25,
@@ -449,6 +494,7 @@ class AvatarWindow(tk.Toplevel):
             self.canvas.create_text(
                 self.size // 2, self.size // 2, text="🤖", font=("Arial", 30)
             )
+            self.is_oval_fallback = True
 
         self.canvas.bind("<Button-1>", self.start_drag)
         self.canvas.bind("<B1-Motion>", self.do_drag)
@@ -502,9 +548,18 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if getattr(self, "is_oval_fallback", False):
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
+        else:
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -707,6 +762,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6), pady=8)
+        ToolTip(self.btn_vision, "Analyser l'écran (F9)")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -718,6 +774,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+        ToolTip(self.btn_send, "Envoyer l'instruction")
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
