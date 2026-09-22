@@ -29,8 +29,15 @@ class ActionMemory:
         self, screen_hash: str, user_intent: str, action_data: dict
     ):
         """Enregistre une action réussie associée à l'empreinte d'écran."""
+        # Input validation for security and data integrity
+        if not isinstance(screen_hash, str) or not isinstance(user_intent, str):
+            raise TypeError("screen_hash and user_intent must be strings")
+        if not isinstance(action_data, dict):
+            raise TypeError("action_data must be a dictionary")
+
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+            # Parameterized query used to prevent SQL injection
             cursor.execute(
                 """
                 INSERT INTO routines (screen_hash, user_intent, action_data)
@@ -42,8 +49,13 @@ class ActionMemory:
 
     def get_routine(self, screen_hash: str, user_intent: str) -> dict | None:
         """Recherche si une action existe déjà pour cet écran et cette demande."""
+        # Input validation for security and data integrity
+        if not isinstance(screen_hash, str) or not isinstance(user_intent, str):
+            raise TypeError("screen_hash and user_intent must be strings")
+
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+            # Parameterized query used to prevent SQL injection
             cursor.execute(
                 """
                 SELECT action_data FROM routines
@@ -54,5 +66,9 @@ class ActionMemory:
             )
             result = cursor.fetchone()
             if result:
-                return json.loads(result[0])
+                try:
+                    return json.loads(result[0])
+                except (json.JSONDecodeError, TypeError):
+                    # Fail securely if database content is corrupted
+                    return None
             return None
