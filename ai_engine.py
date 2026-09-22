@@ -26,6 +26,7 @@ class AIEngine:
         # -------------------------------------------------------------
         # Nous ne vérifions le cache QUE si c'est une requête PUREMENT textuelle.
         # Si nous avons une capture d'écran, nous DEVONS analyser l'image actuelle.
+        # Retrieve cached response safely using parameterized SQLite query in database.py
         cached_response = get_cached_answer(user_intent)
 
         # On n'utilise le cache que si raw_screenshot est absent/None.
@@ -105,6 +106,7 @@ class AIEngine:
                 # Nous sauvegardons la réponse UNIQUEMENT si nous avons dû appeler Gemini.
                 # Et nous ne sauvegardons QUE les réponses textuelles d'intérêt (pas les actions de clic)
                 # Note: ici, on sauvegarde la réponse JSON complète pour le moment.
+                # Save response safely using parameterized SQLite query in database.py
                 save_answer(
                     user_intent, json.dumps(action_result, ensure_ascii=False)
                 )
