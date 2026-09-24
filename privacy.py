@@ -11,9 +11,13 @@ class PrivacyFilter:
         )
 
     def redact_sensitive_data(self, pil_image: Image.Image) -> Image.Image:
+        # Convert PIL RGB image to numpy array (RGB order)
         open_cv_image = np.array(pil_image)
-        open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
-        gray = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
+
+        # Optimization (⚡ Bolt): Convert RGB directly to grayscale in a single step
+        # avoiding redundant RGB->BGR and BGR->RGB conversions around GaussianBlur operations.
+        # GaussianBlur operates channel-wise and works identically on RGB slice arrays.
+        gray = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2GRAY)
 
         # Floutage automatique des visages à l'écran
         faces = self.face_cascade.detectMultiScale(
@@ -39,4 +43,5 @@ class PrivacyFilter:
                     roi, (51, 51), 0
                 )
 
-        return Image.fromarray(cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2RGB))
+        # Return PIL image directly from RGB numpy array
+        return Image.fromarray(open_cv_image)

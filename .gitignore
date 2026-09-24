@@ -5,4 +5,10 @@
 !stream.py
 !memory.py
 !ai_engine.py
+!database.py
 !requirements.txt
+!test_privacy.py
+!test_database.py
+!test_stream.py
+!.jules/
+!.jules/bolt.md
