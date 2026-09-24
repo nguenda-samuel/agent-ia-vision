@@ -1,0 +1,3 @@
+## 2026-09-24 - Eliminating Redundant OpenCV Frame Conversions in Privacy Filter
+**Learning:** `PrivacyFilter.redact_sensitive_data` was performing `cv2.COLOR_RGB2BGR` and `cv2.COLOR_BGR2RGB` conversions on full-resolution numpy frame arrays around OpenCV GaussianBlur operations. Because GaussianBlur operates channel-wise identically on RGB and BGR array slices, these full-frame array copies and conversions were completely redundant.
+**Action:** Convert PIL RGB images directly to grayscale via `cv2.COLOR_RGB2GRAY`, and perform blur operations directly on RGB array slices before constructing the output PIL image.
