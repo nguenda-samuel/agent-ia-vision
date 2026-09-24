@@ -1,6 +1,13 @@
 import json
+import re
 import time
-from database import get_cached_answer, save_answer
+try:
+    from database import get_cached_answer, save_answer
+except ImportError:
+    # Handle missing database module safely
+    def get_cached_answer(intent: str): return None
+    def save_answer(intent: str, answer: str): pass
+
 from google import genai
 from google.genai import types
 from memory import ActionMemory
@@ -16,17 +23,30 @@ class AIEngine:
         self.stream = ScreenStream()
         self.memory = ActionMemory()
 
+    @staticmethod
+    def _sanitize_intent(user_intent: str, max_length: int = 500) -> str:
+        """Sanitizes user input to prevent prompt injection and token exhaustion attacks."""
+        if not user_intent:
+            return ""
+        # Truncate to max_length to mitigate DoS / excessive token usage
+        sanitized = user_intent[:max_length]
+        # Remove dangerous control characters (keep standard whitespace)
+        sanitized = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', sanitized)
+        return sanitized.strip()
+
     def process_screen_and_intent(
         self, raw_screenshot, user_intent: str
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
+        # Security: sanitize user intent input
+        sanitized_intent = self._sanitize_intent(user_intent)
 
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
         # -------------------------------------------------------------
         # Nous ne vérifions le cache QUE si c'est une requête PUREMENT textuelle.
         # Si nous avons une capture d'écran, nous DEVONS analyser l'image actuelle.
-        cached_response = get_cached_answer(user_intent)
+        cached_response = get_cached_answer(sanitized_intent)
 
         # On n'utilise le cache que si raw_screenshot est absent/None.
         if cached_response and not raw_screenshot:
@@ -59,7 +79,7 @@ class AIEngine:
         
         # Le code que tu dois copier-coller :
         prompt = f"""
-        Tu es un assistant virtuel qui regarde l'écran d'un utilisateur pour l'aider à accomplir : "{user_intent}".
+        Tu es un assistant virtuel qui regarde l'écran d'un utilisateur pour l'aider à accomplir : "{sanitized_intent}".
         Réponds STRICTEMENT avec un objet JSON au format suivant :
         {{
             "action": "click" ou "wait" ou "none",
@@ -106,7 +126,7 @@ class AIEngine:
                 # Et nous ne sauvegardons QUE les réponses textuelles d'intérêt (pas les actions de clic)
                 # Note: ici, on sauvegarde la réponse JSON complète pour le moment.
                 save_answer(
-                    user_intent, json.dumps(action_result, ensure_ascii=False)
+                    sanitized_intent, json.dumps(action_result, ensure_ascii=False)
                 )
 
                 return action_result
