@@ -29,6 +29,7 @@ class ActionMemory:
         self, screen_hash: str, user_intent: str, action_data: dict
     ):
         """Enregistre une action réussie associée à l'empreinte d'écran."""
+        # SECURITY: Always use parameterized queries (?) to prevent SQL injection attacks
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -36,12 +37,13 @@ class ActionMemory:
                 INSERT INTO routines (screen_hash, user_intent, action_data)
                 VALUES (?, ?, ?)
             """,
-                (screen_hash, user_intent, json.dumps(action_data)),
+                (str(screen_hash), str(user_intent), json.dumps(action_data)),
             )
             conn.commit()
 
     def get_routine(self, screen_hash: str, user_intent: str) -> dict | None:
         """Recherche si une action existe déjà pour cet écran et cette demande."""
+        # SECURITY: Parameterized query ensures user inputs cannot alter SQL query structure
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -50,9 +52,12 @@ class ActionMemory:
                 WHERE screen_hash = ? AND user_intent = ?
                 ORDER BY id DESC LIMIT 1
             """,
-                (screen_hash, user_intent),
+                (str(screen_hash), str(user_intent)),
             )
             result = cursor.fetchone()
             if result:
-                return json.loads(result[0])
+                try:
+                    return json.loads(result[0])
+                except (json.JSONDecodeError, TypeError):
+                    return None
             return None
