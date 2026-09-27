@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from database import get_cached_answer, save_answer
 from google import genai
@@ -126,7 +127,9 @@ class AIEngine:
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Augmente le temps d'attente à chaque échec
                 else:
-                    print(f"[Erreur Gemini API] : {e}")
+                    safe_err = re.sub(r'key=[A-Za-z0-9_\-]+', 'key=[REDACTED]', err_str)
+                    safe_err = re.sub(r'AIza[0-9A-Za-z-_]{35}', '[REDACTED_API_KEY]', safe_err)
+                    print(f"[Erreur Gemini API] : {safe_err}")
                     return {
                         "action": "none",
                         "text": "Désolé, je n'ai pas pu analyser l'écran.",

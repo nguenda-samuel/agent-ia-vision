@@ -916,7 +916,10 @@ class VisionAssistantApp(ctk.CTk):
                 )
                 self.after(0, self.stop_agent_workflow)
             else:
-                self.append_to_chat(f"❌ Erreur : {err_msg}", is_user=False)
+                # Redact sensitive parameters (API keys, tokens) before displaying in chat
+                safe_err_msg = re.sub(r'key=[A-Za-z0-9_\-]+', 'key=[REDACTED]', err_msg)
+                safe_err_msg = re.sub(r'AIza[0-9A-Za-z-_]{35}', '[REDACTED_API_KEY]', safe_err_msg)
+                self.append_to_chat(f"❌ Erreur : {safe_err_msg}", is_user=False)
                 self.after(
                     0, lambda: self.set_status("❌ Erreur", "#e74c3c", "idle")
                 )
