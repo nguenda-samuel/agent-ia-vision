@@ -19,6 +19,55 @@ import speech_recognition as sr
 
 from ai_engine import AIEngine
 
+
+class ToolTip:
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tip_window = None
+        self.id = None
+        self.widget.bind("<Enter>", lambda e: self.schedule())
+        self.widget.bind("<Leave>", lambda e: self.hidetip())
+
+    def schedule(self):
+        self.unschedule()
+        self.id = self.widget.after(400, self.showtip)
+
+    def unschedule(self):
+        if self.id:
+            self.widget.after_cancel(self.id)
+            self.id = None
+
+    def showtip(self):
+        if self.tip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 20
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        tw.wm_attributes("-topmost", True)
+        label = tk.Label(
+            tw,
+            text=self.text,
+            bg="#2a2b3d",
+            fg="#c8d3f5",
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9),
+            padx=6,
+            pady=3,
+        )
+        label.pack()
+
+    def hidetip(self):
+        self.unschedule()
+        if self.tip_window:
+            self.tip_window.destroy()
+            self.tip_window = None
+
+
 # Configuration de l'esthétique globale
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -283,6 +332,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6))
+        ToolTip(self.btn_vision, "Analyser l'écran actuel")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -293,6 +343,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+        ToolTip(self.btn_send, "Envoyer l'instruction")
 
         self.withdraw()
 
@@ -502,9 +553,16 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        item_type = self.canvas.type(self.img_id)
+        if item_type == "image":
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        elif item_type == "oval":
+            cy = (self.size // 2) + offset_y
+            self.canvas.coords(
+                self.img_id, 25, cy - 30, self.size - 25, cy + 30
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -707,6 +765,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6), pady=8)
+        ToolTip(self.btn_vision, "Analyser l'écran (F9)")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -718,6 +777,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+        ToolTip(self.btn_send, "Envoyer l'instruction")
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
@@ -789,6 +849,8 @@ class VisionAssistantApp(ctk.CTk):
 
         self.workflow_active = True
         self.is_processing = True
+        self.btn_send.configure(state="disabled")
+        self.btn_vision.configure(state="disabled")
         self.current_sequence = []
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
@@ -925,6 +987,8 @@ class VisionAssistantApp(ctk.CTk):
             # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
             # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
             self.is_processing = False
+            self.after(0, lambda: self.btn_send.configure(state="normal"))
+            self.after(0, lambda: self.btn_vision.configure(state="normal"))
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:
