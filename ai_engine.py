@@ -21,6 +21,14 @@ class AIEngine:
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
 
+        # Security: Input validation and sanitization on user_intent
+        if not user_intent:
+            user_intent = ""
+        # Truncate input length to mitigate DoS / token exhaustion attacks
+        user_intent = user_intent.strip()[:500]
+        # Remove potentially dangerous control characters
+        user_intent = "".join(ch for ch in user_intent if ch.isprintable() or ch in ("\n", "\t"))
+
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
         # -------------------------------------------------------------
