@@ -1,0 +1,4 @@
+## 2026-09-29 - Parameterized Queries for SQLite Database Cache
+**Vulnerability:** `ai_engine.py` referenced a database caching layer (`get_cached_answer` and `save_answer`) for AI prompts and responses. Omitting parameterized queries or using unsafe string interpolation for user prompt inputs in SQL queries opens up critical SQL injection vulnerabilities.
+**Learning:** The project .gitignore uses a whitelist pattern (`*` ignored by default), which caused the original database caching module to be excluded from repository tracking. When implementing database operations for user inputs, parameterized SQL statements (`?` placeholders) must be strictly enforced.
+**Prevention:** Always use parameterized SQL queries (`?`) in SQLite queries for dynamic inputs, ensure custom source modules are explicitly un-ignored in `.gitignore`, and add unit tests validating SQL injection payload safety.
