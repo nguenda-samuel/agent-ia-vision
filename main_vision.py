@@ -216,6 +216,48 @@ class AnimatedPointerWindow(tk.Toplevel):
         self.geometry("+-300+-300")
 
 
+# ==================== INFO-BULLES / TOOLTIPS ====================
+
+
+class CToolTip:
+    """Affiche une info-bulle flottante au survol d'un composant."""
+
+    def __init__(self, widget, text: str):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip, add="+")
+        self.widget.bind("<Leave>", self.hide_tooltip, add="+")
+
+    def show_tooltip(self, event=None):
+        if self.tooltip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 10
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        tw.attributes("-topmost", True)
+        label = tk.Label(
+            tw,
+            text=self.text,
+            justify="left",
+            background=FRAME_BG,
+            foreground=TEXT_COLOR,
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9),
+            padx=8,
+            pady=4,
+        )
+        label.pack()
+
+    def hide_tooltip(self, event=None):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
+
+
 # ==================== MINI-FENÊTRE DE SAISIE RAPIDE ====================
 
 
@@ -293,6 +335,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+        CToolTip(self.btn_send, "Envoyer l'instruction (Entrée)")
 
         self.withdraw()
 
@@ -707,6 +750,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6), pady=8)
+        CToolTip(self.btn_vision, "Analyser l'écran (F9)")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -718,6 +762,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+        CToolTip(self.btn_send, "Envoyer la demande (Entrée)")
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
