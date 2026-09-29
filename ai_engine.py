@@ -21,6 +21,9 @@ class AIEngine:
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
 
+        # Validation et nettoyage de l'intent utilisateur pour limiter les risques DoS et injection
+        user_intent = str(user_intent or "").strip()[:1000]
+
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
         # -------------------------------------------------------------
