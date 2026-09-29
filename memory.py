@@ -23,6 +23,14 @@ class ActionMemory:
                 )
             """
             )
+            # Index composite sur (screen_hash, user_intent) pour accélérer get_routine
+            # d'une recherche séquentielle O(N) à une recherche par index B-Tree O(log N).
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_routines_hash_intent
+                ON routines (screen_hash, user_intent)
+            """
+            )
             conn.commit()
 
     def save_routine(
