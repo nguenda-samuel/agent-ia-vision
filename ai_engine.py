@@ -1,6 +1,6 @@
 import json
 import time
-from database import get_cached_answer, save_answer
+import database
 from google import genai
 from google.genai import types
 from memory import ActionMemory
@@ -26,7 +26,7 @@ class AIEngine:
         # -------------------------------------------------------------
         # Nous ne vérifions le cache QUE si c'est une requête PUREMENT textuelle.
         # Si nous avons une capture d'écran, nous DEVONS analyser l'image actuelle.
-        cached_response = get_cached_answer(user_intent)
+        cached_response = database.get_cached_answer(user_intent)
 
         # On n'utilise le cache que si raw_screenshot est absent/None.
         if cached_response and not raw_screenshot:
@@ -105,7 +105,7 @@ class AIEngine:
                 # Nous sauvegardons la réponse UNIQUEMENT si nous avons dû appeler Gemini.
                 # Et nous ne sauvegardons QUE les réponses textuelles d'intérêt (pas les actions de clic)
                 # Note: ici, on sauvegarde la réponse JSON complète pour le moment.
-                save_answer(
+                database.save_answer(
                     user_intent, json.dumps(action_result, ensure_ascii=False)
                 )
 
