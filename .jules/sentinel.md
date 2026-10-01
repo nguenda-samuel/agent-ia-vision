@@ -1,0 +1,4 @@
+## 2026-10-01 - Secure Database Caching Implementation for AI Engine
+**Vulnerability:** The AI engine (`ai_engine.py`) imported a missing `database` module (`from database import get_cached_answer, save_answer`) for caching user intent responses. If implemented naively without parameterized queries, user intent string inputs would expose the SQLite caching database to SQL injection (SQLi) attacks.
+**Learning:** High-level AI engines relying on database response caches require parameterized queries (`?` placeholders) and strict input validation on user intents. Additionally, in repositories with explicit `.gitignore` whitelists (`*` default ignore), newly created module files must be explicitly whitelisted in `.gitignore`.
+**Prevention:** Always use parameterized SQLite queries (`?` placeholders) for database caching operations and ensure all new module files are whitelisted in `.gitignore`.
