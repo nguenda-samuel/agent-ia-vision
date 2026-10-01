@@ -1,8 +1,13 @@
 *
 !.gitignore
+!.jules/
+!.jules/sentinel.md
 !main_vision.py
 !privacy.py
 !stream.py
 !memory.py
 !ai_engine.py
+!database.py
+!test_database.py
+!test_ai_engine.py
 !requirements.txt
