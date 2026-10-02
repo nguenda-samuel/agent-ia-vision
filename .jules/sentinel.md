@@ -1,0 +1,4 @@
+## 2026-09-04 - SQLite Parameterized Query Safeguards & Git Whitelist Rules
+**Vulnerability:** SQL injection risks when storing or retrieving user intents and AI responses in SQLite database caching.
+**Learning:** `ai_engine.py` expected a `database` module with `get_cached_answer` and `save_answer` for caching text responses. When user input is used in SQL statements, unparameterized queries allow SQL injection. Additionally, this codebase uses an explicit `.gitignore` whitelist (`*` ignored by default), meaning new security modules (`database.py`), tests, and `.jules` journal directory must be explicitly un-ignored with `!` rules in `.gitignore` to be committed.
+**Prevention:** Always use parameterized SQL placeholders (`?`) in SQLite queries instead of string formatting/concatenation. Check `.gitignore` when adding new files in whitelisted repos to ensure new security modules and journals are tracked.
