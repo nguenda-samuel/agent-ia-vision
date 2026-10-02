@@ -446,7 +446,7 @@ class AvatarWindow(tk.Toplevel):
                 fill="#2c3e50",
                 outline="",
             )
-            self.canvas.create_text(
+            self.emoji_id = self.canvas.create_text(
                 self.size // 2, self.size // 2, text="🤖", font=("Arial", 30)
             )
 
@@ -502,9 +502,22 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if self.canvas.type(self.img_id) == "image":
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        else:
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
+            if hasattr(self, "emoji_id"):
+                self.canvas.coords(
+                    self.emoji_id, self.size // 2, (self.size // 2) + offset_y
+                )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -762,6 +775,13 @@ class VisionAssistantApp(ctk.CTk):
         self.lbl_status.configure(text=text, text_color=color)
         self.avatar.set_state(avatar_state)
 
+    def _set_inputs_state(self, is_loading: bool):
+        """Met à jour l'état visuel des boutons de saisie pour donner un retour immédiat."""
+        state = "disabled" if is_loading else "normal"
+        send_text = "⏳" if is_loading else "🚀"
+        self.btn_send.configure(state=state, text=send_text)
+        self.btn_vision.configure(state=state)
+
     def stop_agent_workflow(self):
         self.workflow_active = False
         self.current_workflow_goal = None
@@ -769,6 +789,7 @@ class VisionAssistantApp(ctk.CTk):
         self.last_click_coords = (-100, -100)
         self.pointer.hide()
         self.stop_audio()
+        self._set_inputs_state(False)
         self.set_status("🟢 Prêt", "#55efc4", "idle")
 
     def process_request(self, use_vision):
@@ -790,6 +811,7 @@ class VisionAssistantApp(ctk.CTk):
         self.workflow_active = True
         self.is_processing = True
         self.current_sequence = []
+        self._set_inputs_state(True)
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
         threading.Thread(
@@ -925,6 +947,7 @@ class VisionAssistantApp(ctk.CTk):
             # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
             # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
             self.is_processing = False
+            self.after(0, lambda: self._set_inputs_state(False))
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:
