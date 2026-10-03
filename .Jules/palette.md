@@ -1,0 +1,3 @@
+## 2026-10-03 - CustomTkinter Async Action Feedback & Icon Tooltips
+**Learning:** In desktop vision agents using CustomTkinter, icon-only action buttons ("📸", "🚀") lack visual feedback during asynchronous screen analysis, causing user confusion and duplicate API calls. Disabling input action controls during processing and providing hover tooltips with shortcut hints ("📸 Analyser l'écran (F9)") dramatically clarifies app state and action purpose.
+**Action:** Always pair asynchronous background actions with immediate control state toggling (`state="disabled"` / `state="normal"`) and attach hover tooltips to icon-only buttons in Tkinter/CustomTkinter interfaces.
