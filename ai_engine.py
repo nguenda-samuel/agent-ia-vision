@@ -1,5 +1,7 @@
 import json
 import time
+
+# Use parameterized database functions to safely fetch and save cached responses without SQL injection risk
 from database import get_cached_answer, save_answer
 from google import genai
 from google.genai import types
