@@ -1,0 +1,3 @@
+## 2026-08-30 - CustomTkinter Icon-Only Button Accessibility and Tooltips
+**Learning:** CustomTkinter CTkButton widgets used with icon-only emojis (e.g., 📸, 🚀) lack accessible descriptions or tooltips, leaving keyboard and mouse users without context on button functionality. Implementing a lightweight CTkToolTip binding using `tk.Toplevel` on hover events and managing button state during async processing prevents double-submits and provides visual/accessible feedback.
+**Action:** Always pair icon-only CTkButtons with hover tooltips and update interactive button states (`disabled`/`normal`) during async requests in CustomTkinter apps.
