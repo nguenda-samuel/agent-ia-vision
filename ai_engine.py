@@ -126,7 +126,8 @@ class AIEngine:
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Augmente le temps d'attente à chaque échec
                 else:
-                    print(f"[Erreur Gemini API] : {e}")
+                    # SECURITY ENHANCEMENT: Avoid leaking raw exception details that may contain tokens in logs
+                    print("[Erreur Gemini API] Une erreur s'est produite lors de l'appel API.")
                     return {
                         "action": "none",
                         "text": "Désolé, je n'ai pas pu analyser l'écran.",

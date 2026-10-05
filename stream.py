@@ -1,3 +1,4 @@
+import time
 from PIL import Image
 import imagehash
 
@@ -31,3 +32,28 @@ class ScreenStream:
             return True
 
         return False
+
+    def wait_until_stable(
+        self,
+        capture_func,
+        max_wait_sec: float = 3.0,
+        check_interval: float = 0.3,
+    ) -> Image.Image:
+        """Attend jusqu'à ce que l'écran soit stable (aucun changement significatif) ou timeout.
+
+        Appelle capture_func() pour capturer l'image actuelle et renvoie l'image capturée.
+        """
+        start_time = time.time()
+        img = capture_func()
+
+        # Si premier hash n'est pas défini
+        self.has_screen_changed(img)
+
+        while (time.time() - start_time) < max_wait_sec:
+            time.sleep(check_interval)
+            next_img = capture_func()
+            if not self.has_screen_changed(next_img):
+                return next_img
+            img = next_img
+
+        return img

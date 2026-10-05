@@ -5,4 +5,13 @@
 !stream.py
 !memory.py
 !ai_engine.py
+!database.py
 !requirements.txt
+!test_*.py
+!.jules/
+!.jules/**
+
+# Ignore generated database cache files and bytecode
+*.db
+__pycache__/
+*.pyc
