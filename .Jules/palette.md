@@ -1,0 +1,3 @@
+## 2026-10-06 - Tooltips and Keyboard Shortcuts for CustomTkinter Interfaces
+**Learning:** Icon-only buttons (such as 📸 and 🚀) lack context for screen reader users and keyboard navigation. Adding hover tooltips and key bindings (like `<Escape>` for hiding windows) dramatically improves accessibility and usability. When dynamic canvas elements (like `AvatarWindow`) fallback to basic shapes when resources (`avatar.png`) are missing, coordinate updates must check canvas item types (`image` vs `oval`/shapes) to prevent runtime coordinate errors.
+**Action:** Always wrap icon-only buttons with tooltips, bind standard navigation keys (`<Escape>`, `<Return>`), and guard Tkinter canvas coordinate updates based on item type.
