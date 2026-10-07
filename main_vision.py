@@ -31,6 +31,51 @@ ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
 
 
+class CTkToolTip:
+    """Affiche une infobulle au survol de la souris pour améliorer l'accessibilité."""
+
+    def __init__(self, widget, text: str):
+        self.widget = widget
+        self.text = text
+        self.tip_window = None
+        self.widget.bind("<Enter>", self.show_tip)
+        self.widget.bind("<Leave>", self.hide_tip)
+
+    def show_tip(self, event=None):
+        if self.tip_window or not self.text:
+            return
+        try:
+            x = self.widget.winfo_rootx() + 10
+            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+            self.tip_window = tw = tk.Toplevel(self.widget)
+            tw.wm_overrideredirect(True)
+            tw.wm_geometry(f"+{x}+{y}")
+            tw.wm_attributes("-topmost", True)
+            label = tk.Label(
+                tw,
+                text=self.text,
+                justify="left",
+                bg=FRAME_BG,
+                fg=TEXT_COLOR,
+                relief="solid",
+                bd=1,
+                font=("Segoe UI", 9),
+                ipadx=6,
+                ipady=3,
+            )
+            label.pack()
+        except Exception:
+            pass
+
+    def hide_tip(self, event=None):
+        if self.tip_window:
+            try:
+                self.tip_window.destroy()
+            except Exception:
+                pass
+            self.tip_window = None
+
+
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
 
 
@@ -294,6 +339,9 @@ class QuickInputWindow(ctk.CTkToplevel):
         )
         self.btn_send.pack(side="right")
 
+        CTkToolTip(self.btn_vision, "Analyser l'écran avec la vue actuelle")
+        CTkToolTip(self.btn_send, "Envoyer l'instruction à l'agent")
+
         self.withdraw()
 
     def show_and_focus(self):
@@ -437,6 +485,7 @@ class AvatarWindow(tk.Toplevel):
             self.img_id = self.canvas.create_image(
                 self.size // 2, self.size // 2, image=self.tk_img
             )
+            self.is_image = True
         except Exception:
             self.img_id = self.canvas.create_oval(
                 25,
@@ -449,6 +498,7 @@ class AvatarWindow(tk.Toplevel):
             self.canvas.create_text(
                 self.size // 2, self.size // 2, text="🤖", font=("Arial", 30)
             )
+            self.is_image = False
 
         self.canvas.bind("<Button-1>", self.start_drag)
         self.canvas.bind("<B1-Motion>", self.do_drag)
@@ -502,9 +552,18 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if getattr(self, "is_image", True):
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        else:
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -664,6 +723,9 @@ class VisionAssistantApp(ctk.CTk):
         )
         self.btn_hide.pack(side="right", padx=3)
 
+        CTkToolTip(self.btn_quick, "Ouvrir la saisie rapide")
+        CTkToolTip(self.btn_hide, "Masquer la fenêtre")
+
         self.lbl_status = ctk.CTkLabel(
             self.main_frame,
             text="🟢 Prêt",
@@ -719,6 +781,9 @@ class VisionAssistantApp(ctk.CTk):
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
 
+        CTkToolTip(self.btn_vision, "Analyser l'écran (F9)")
+        CTkToolTip(self.btn_send, "Envoyer la demande à l'agent")
+
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
         )
@@ -762,6 +827,16 @@ class VisionAssistantApp(ctk.CTk):
         self.lbl_status.configure(text=text, text_color=color)
         self.avatar.set_state(avatar_state)
 
+    def set_processing_ui(self, processing: bool):
+        state = "disabled" if processing else "normal"
+        self.btn_vision.configure(state=state)
+        self.btn_send.configure(state=state, text="⏳" if processing else "🚀")
+        if hasattr(self, "quick_input"):
+            self.quick_input.btn_vision.configure(state=state)
+            self.quick_input.btn_send.configure(
+                state=state, text="⏳" if processing else "🚀"
+            )
+
     def stop_agent_workflow(self):
         self.workflow_active = False
         self.current_workflow_goal = None
@@ -789,6 +864,7 @@ class VisionAssistantApp(ctk.CTk):
 
         self.workflow_active = True
         self.is_processing = True
+        self.set_processing_ui(True)
         self.current_sequence = []
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
@@ -925,6 +1001,7 @@ class VisionAssistantApp(ctk.CTk):
             # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
             # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
             self.is_processing = False
+            self.after(0, lambda: self.set_processing_ui(False))
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:
