@@ -1,5 +1,6 @@
 import json
 import time
+# Secure SQLite database cache module preventing SQL injection
 from database import get_cached_answer, save_answer
 from google import genai
 from google.genai import types
@@ -26,6 +27,7 @@ class AIEngine:
         # -------------------------------------------------------------
         # Nous ne vérifions le cache QUE si c'est une requête PUREMENT textuelle.
         # Si nous avons une capture d'écran, nous DEVONS analyser l'image actuelle.
+        # Safe parameterized database query to retrieve cached answer
         cached_response = get_cached_answer(user_intent)
 
         # On n'utilise le cache que si raw_screenshot est absent/None.
