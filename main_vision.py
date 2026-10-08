@@ -434,10 +434,12 @@ class AvatarWindow(tk.Toplevel):
             pil_img = Image.open("avatar.png").convert("RGBA")
             pil_img = pil_img.resize((65, 65), Image.Resampling.LANCZOS)
             self.tk_img = ImageTk.PhotoImage(pil_img)
+            self.is_image_avatar = True
             self.img_id = self.canvas.create_image(
                 self.size // 2, self.size // 2, image=self.tk_img
             )
         except Exception:
+            self.is_image_avatar = False
             self.img_id = self.canvas.create_oval(
                 25,
                 25,
@@ -446,7 +448,7 @@ class AvatarWindow(tk.Toplevel):
                 fill="#2c3e50",
                 outline="",
             )
-            self.canvas.create_text(
+            self.text_id = self.canvas.create_text(
                 self.size // 2, self.size // 2, text="🤖", font=("Arial", 30)
             )
 
@@ -502,9 +504,21 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if getattr(self, "is_image_avatar", True):
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        else:
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
+            self.canvas.coords(
+                self.text_id, self.size // 2, (self.size // 2) + offset_y
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -758,6 +772,10 @@ class VisionAssistantApp(ctk.CTk):
         self.entry.insert(0, text)
         self.process_request(use_vision=use_vision)
 
+    def set_input_buttons_state(self, state):
+        self.btn_vision.configure(state=state)
+        self.btn_send.configure(state=state)
+
     def set_status(self, text, color="#55efc4", avatar_state="idle"):
         self.lbl_status.configure(text=text, text_color=color)
         self.avatar.set_state(avatar_state)
@@ -769,6 +787,7 @@ class VisionAssistantApp(ctk.CTk):
         self.last_click_coords = (-100, -100)
         self.pointer.hide()
         self.stop_audio()
+        self.set_input_buttons_state("normal")
         self.set_status("🟢 Prêt", "#55efc4", "idle")
 
     def process_request(self, use_vision):
@@ -789,6 +808,7 @@ class VisionAssistantApp(ctk.CTk):
 
         self.workflow_active = True
         self.is_processing = True
+        self.set_input_buttons_state("disabled")
         self.current_sequence = []
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
@@ -925,6 +945,7 @@ class VisionAssistantApp(ctk.CTk):
             # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
             # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
             self.is_processing = False
+            self.after(0, lambda: self.set_input_buttons_state("normal"))
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:
