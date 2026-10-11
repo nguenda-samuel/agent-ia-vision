@@ -437,6 +437,7 @@ class AvatarWindow(tk.Toplevel):
             self.img_id = self.canvas.create_image(
                 self.size // 2, self.size // 2, image=self.tk_img
             )
+            self.is_image = True
         except Exception:
             self.img_id = self.canvas.create_oval(
                 25,
@@ -449,6 +450,7 @@ class AvatarWindow(tk.Toplevel):
             self.canvas.create_text(
                 self.size // 2, self.size // 2, text="🤖", font=("Arial", 30)
             )
+            self.is_image = False
 
         self.canvas.bind("<Button-1>", self.start_drag)
         self.canvas.bind("<B1-Motion>", self.do_drag)
@@ -502,9 +504,18 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if getattr(self, "is_image", True):
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        else:
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -758,6 +769,10 @@ class VisionAssistantApp(ctk.CTk):
         self.entry.insert(0, text)
         self.process_request(use_vision=use_vision)
 
+    def set_buttons_state(self, state):
+        self.btn_vision.configure(state=state)
+        self.btn_send.configure(state=state)
+
     def set_status(self, text, color="#55efc4", avatar_state="idle"):
         self.lbl_status.configure(text=text, text_color=color)
         self.avatar.set_state(avatar_state)
@@ -770,6 +785,7 @@ class VisionAssistantApp(ctk.CTk):
         self.pointer.hide()
         self.stop_audio()
         self.set_status("🟢 Prêt", "#55efc4", "idle")
+        self.set_buttons_state("normal")
 
     def process_request(self, use_vision):
         # Garde-fou anti-concurrence : si une analyse tourne déjà, on ignore
@@ -790,6 +806,7 @@ class VisionAssistantApp(ctk.CTk):
         self.workflow_active = True
         self.is_processing = True
         self.current_sequence = []
+        self.set_buttons_state("disabled")
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
         threading.Thread(
@@ -925,6 +942,7 @@ class VisionAssistantApp(ctk.CTk):
             # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
             # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
             self.is_processing = False
+            self.after(0, lambda: self.set_buttons_state("normal"))
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:
