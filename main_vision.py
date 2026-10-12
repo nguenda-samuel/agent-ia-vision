@@ -31,6 +31,44 @@ ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
 
 
+class CTkToolTip:
+    """Affiche une info-bulle au survol d'un composant pour l'accessibilité."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip, add="+")
+        self.widget.bind("<Leave>", self.hide_tooltip, add="+")
+
+    def show_tooltip(self, event=None):
+        if self.tooltip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 10
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        tw.wm_attributes("-topmost", True)
+        lbl = tk.Label(
+            tw,
+            text=self.text,
+            bg=FRAME_BG,
+            fg=TEXT_COLOR,
+            relief="solid",
+            bd=1,
+            font=("Segoe UI", 9),
+            padx=6,
+            pady=3,
+        )
+        lbl.pack()
+
+    def hide_tooltip(self, event=None):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
+
+
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
 
 
@@ -294,6 +332,9 @@ class QuickInputWindow(ctk.CTkToplevel):
         )
         self.btn_send.pack(side="right")
 
+        CTkToolTip(self.btn_vision, "Analyser l'écran avec votre instruction")
+        CTkToolTip(self.btn_send, "Envoyer l'instruction (Entrée)")
+
         self.withdraw()
 
     def show_and_focus(self):
@@ -502,9 +543,18 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if self.canvas.type(self.img_id) == "image":
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        else:
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -719,6 +769,9 @@ class VisionAssistantApp(ctk.CTk):
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
 
+        CTkToolTip(self.btn_vision, "Analyser l'écran (F9)")
+        CTkToolTip(self.btn_send, "Envoyer l'instruction (Entrée)")
+
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
         )
@@ -743,6 +796,7 @@ class VisionAssistantApp(ctk.CTk):
         )
         self.hotkey_listener.start()
 
+        self.bind("<Escape>", lambda event: self.toggle_main_window())
         self.protocol("WM_DELETE_WINDOW", self.toggle_main_window)
 
     def toggle_main_window(self):
@@ -751,6 +805,9 @@ class VisionAssistantApp(ctk.CTk):
             self.main_window_visible = False
         else:
             self.deiconify()
+            self.lift()
+            self.focus_force()
+            self.entry.focus_set()
             self.main_window_visible = True
 
     def process_custom_prompt(self, text, use_vision=True):
