@@ -23,6 +23,14 @@ class ActionMemory:
                 )
             """
             )
+            # Performance optimization: Composite index on (screen_hash, user_intent)
+            # accelerates get_routine query lookups from O(N) full table scans to O(log N).
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_routines_hash_intent
+                ON routines (screen_hash, user_intent)
+            """
+            )
             conn.commit()
 
     def save_routine(
