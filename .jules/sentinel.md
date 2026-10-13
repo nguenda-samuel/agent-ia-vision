@@ -1,0 +1,4 @@
+## 2026-10-13 - SQLite Parameterized Caching and Whitelist Gitignore
+**Vulnerability:** The `ai_engine.py` module imported functions `get_cached_answer` and `save_answer` from a missing `database` module, causing runtime failures and opening the door to unsafe string-interpolated SQLite queries if re-implemented carelessly.
+**Learning:** In projects with strict `.gitignore` explicit whitelist rules (`*` default ignore), adding new module files without updating `.gitignore` results in missing dependencies or untracked modules. Additionally, database query functions accepting raw user intent strings must strictly parameterize queries to prevent SQL injection vulnerabilities.
+**Prevention:** Always use `?` parameter substitution in SQLite operations when handling untrusted user input, and ensure new source and test files are explicitly un-ignored in `.gitignore`.
