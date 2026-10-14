@@ -1,11 +1,16 @@
 import json
 import time
-from database import get_cached_answer, save_answer
 from google import genai
 from google.genai import types
 from memory import ActionMemory
 from privacy import PrivacyFilter
 from stream import ScreenStream
+
+try:
+    from database import get_cached_answer, save_answer
+except ImportError:
+    get_cached_answer = lambda intent: None
+    save_answer = lambda intent, resp: None
 
 
 class AIEngine:
