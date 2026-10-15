@@ -1,7 +1,13 @@
 import json
 import time
-from database import get_cached_answer, save_answer
-from google import genai
+try:
+    from database import get_cached_answer, save_answer
+except ImportError:
+    def get_cached_answer(intent):
+        return None
+
+    def save_answer(intent, answer):
+        pass
 from google.genai import types
 from memory import ActionMemory
 from privacy import PrivacyFilter

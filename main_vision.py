@@ -2,8 +2,6 @@ import io
 import math
 import os
 import random
-import re
-import sys
 import threading
 import time
 import tkinter as tk
@@ -12,7 +10,7 @@ import customtkinter as ctk
 from google import genai
 from gtts import gTTS
 import mss
-from PIL import Image, ImageChops, ImageStat, ImageTk
+from PIL import Image, ImageTk
 import pygame
 from pynput import keyboard, mouse
 import speech_recognition as sr
@@ -29,6 +27,45 @@ USER_BUBBLE = "#6c5ce7"
 AI_BUBBLE = "#34495e"
 ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
+
+
+# ==================== COMPOSANT INFOBULLE (TOOLTIP) ACCESSIBLE ====================
+
+
+class CTkToolTip:
+    """Infobulle accessible pour enrichir les boutons d'icônes et d'actions."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show)
+        self.widget.bind("<Leave>", self.hide)
+
+    def show(self, event=None):
+        if self.tooltip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 10
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        label = tk.Label(
+            tw,
+            text=self.text,
+            justify="left",
+            background=FRAME_BG,
+            foreground=TEXT_COLOR,
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9),
+        )
+        label.pack(ipadx=6, ipady=3)
+
+    def hide(self, event=None):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
 
 
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
@@ -294,6 +331,9 @@ class QuickInputWindow(ctk.CTkToplevel):
         )
         self.btn_send.pack(side="right")
 
+        CTkToolTip(self.btn_vision, "Analyser l'écran (F9)")
+        CTkToolTip(self.btn_send, "Envoyer la demande (Entrée)")
+
         self.withdraw()
 
     def show_and_focus(self):
@@ -502,9 +542,18 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if self.canvas.type(self.img_id) == "image":
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        else:
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -731,6 +780,11 @@ class VisionAssistantApp(ctk.CTk):
             is_user=False,
         )
 
+        CTkToolTip(self.btn_quick, "Ouvrir la fenêtre de saisie rapide")
+        CTkToolTip(self.btn_hide, "Masquer la fenêtre (Échap)")
+        CTkToolTip(self.btn_vision, "Analyser l'écran (F9)")
+        CTkToolTip(self.btn_send, "Envoyer la demande (Entrée)")
+
         self.avatar = AvatarWindow(self)
         self.subtitle = SubtitleWindow(self)
         self.quick_input = QuickInputWindow(self)
@@ -743,6 +797,7 @@ class VisionAssistantApp(ctk.CTk):
         )
         self.hotkey_listener.start()
 
+        self.bind("<Escape>", lambda event: self.toggle_main_window())
         self.protocol("WM_DELETE_WINDOW", self.toggle_main_window)
 
     def toggle_main_window(self):
@@ -751,6 +806,9 @@ class VisionAssistantApp(ctk.CTk):
             self.main_window_visible = False
         else:
             self.deiconify()
+            self.lift()
+            self.focus_force()
+            self.entry.focus_set()
             self.main_window_visible = True
 
     def process_custom_prompt(self, text, use_vision=True):
