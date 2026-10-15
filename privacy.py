@@ -15,15 +15,19 @@ class PrivacyFilter:
         open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
         gray = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
 
-        # Floutage automatique des visages à l'écran
+        # Optimization: Downscale grayscale image by 0.5x for faster face cascade detection (~2x speedup on face detect)
+        # minSize=(15, 15) at 0.5x scale corresponds to minSize=(30, 30) at 1.0x full resolution.
+        small_gray = cv2.resize(gray, (0, 0), fx=0.5, fy=0.5)
         faces = self.face_cascade.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+            small_gray, scaleFactor=1.1, minNeighbors=5, minSize=(15, 15)
         )
         for x, y, w, h in faces:
-            roi = open_cv_image[y : y + h, x : x + w]
-            open_cv_image[y : y + h, x : x + w] = cv2.GaussianBlur(
-                roi, (99, 99), 30
-            )
+            fx, fy, fw, fh = x * 2, y * 2, w * 2, h * 2
+            roi = open_cv_image[fy : fy + fh, fx : fx + fw]
+            if roi.size > 0:
+                open_cv_image[fy : fy + fh, fx : fx + fw] = cv2.GaussianBlur(
+                    roi, (99, 99), 30
+                )
 
         # Floutage des champs de saisie rectangulaires (ex: mots de passe)
         _, thresh = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY_INV)
@@ -35,8 +39,9 @@ class PrivacyFilter:
             x, y, w, h = cv2.boundingRect(cnt)
             if 100 < w < 400 and 20 < h < 60:
                 roi = open_cv_image[y : y + h, x : x + w]
-                open_cv_image[y : y + h, x : x + w] = cv2.GaussianBlur(
-                    roi, (51, 51), 0
-                )
+                if roi.size > 0:
+                    open_cv_image[y : y + h, x : x + w] = cv2.GaussianBlur(
+                        roi, (51, 51), 0
+                    )
 
         return Image.fromarray(cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2RGB))
