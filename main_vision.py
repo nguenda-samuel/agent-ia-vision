@@ -290,6 +290,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             width=45,
             height=42,
             font=ctk.CTkFont(size=15, weight="bold"),
+            hover_color="#0773c5",
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
@@ -502,9 +503,18 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if self.canvas.type(self.img_id) == "image":
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        elif self.canvas.type(self.img_id) == "oval":
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -715,6 +725,7 @@ class VisionAssistantApp(ctk.CTk):
             height=40,
             font=ctk.CTkFont(size=15),
             fg_color="#0984e3",
+            hover_color="#0773c5",
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
@@ -790,6 +801,9 @@ class VisionAssistantApp(ctk.CTk):
         self.workflow_active = True
         self.is_processing = True
         self.current_sequence = []
+
+        self.btn_send.configure(state="disabled")
+        self.btn_vision.configure(state="disabled")
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
         threading.Thread(
@@ -925,6 +939,8 @@ class VisionAssistantApp(ctk.CTk):
             # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
             # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
             self.is_processing = False
+            self.after(0, lambda: self.btn_send.configure(state="normal"))
+            self.after(0, lambda: self.btn_vision.configure(state="normal"))
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:
