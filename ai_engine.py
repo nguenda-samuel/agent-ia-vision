@@ -1,5 +1,6 @@
 import json
 import time
+# Security: Use database cache with parameterized SQLite queries to prevent SQL injection vulnerabilities
 from database import get_cached_answer, save_answer
 from google import genai
 from google.genai import types
