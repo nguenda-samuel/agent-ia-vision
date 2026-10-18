@@ -16,10 +16,22 @@ class AIEngine:
         self.stream = ScreenStream()
         self.memory = ActionMemory()
 
+    def _sanitize_user_intent(self, user_intent: str) -> str:
+        """Sanitizes user input to prevent prompt injection and limit length (DoS protection)."""
+        if not user_intent or not isinstance(user_intent, str):
+            return "Assistance et guidage sur l'écran"
+        # Remove non-printable control characters and normalize whitespace
+        sanitized = "".join(ch for ch in user_intent if ch.isprintable()).strip()
+        sanitized = " ".join(sanitized.split())
+        if not sanitized:
+            return "Assistance et guidage sur l'écran"
+        return sanitized[:500]
+
     def process_screen_and_intent(
         self, raw_screenshot, user_intent: str
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
+        user_intent = self._sanitize_user_intent(user_intent)
 
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
@@ -131,4 +143,3 @@ class AIEngine:
                         "action": "none",
                         "text": "Désolé, je n'ai pas pu analyser l'écran.",
                     }
-
