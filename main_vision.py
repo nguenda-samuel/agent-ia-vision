@@ -31,6 +31,47 @@ ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
 
 
+# ==================== CTK TOOLTIP HELPER ====================
+
+
+class CTkToolTip:
+    """Info-bulle légère pour les boutons et composants sans texte."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip)
+        self.widget.bind("<Leave>", self.hide_tooltip)
+
+    def show_tooltip(self, event=None):
+        if self.tooltip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 10
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        tw.wm_attributes("-topmost", True)
+        label = tk.Label(
+            tw,
+            text=self.text,
+            bg=FRAME_BG,
+            fg=TEXT_COLOR,
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9),
+            padx=6,
+            pady=3,
+        )
+        label.pack()
+
+    def hide_tooltip(self, event=None):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
+
+
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
 
 
@@ -294,6 +335,9 @@ class QuickInputWindow(ctk.CTkToplevel):
         )
         self.btn_send.pack(side="right")
 
+        CTkToolTip(self.btn_send, "Envoyer la commande (🚀)")
+        CTkToolTip(self.btn_vision, "Analyser l'écran avec la commande (📸)")
+
         self.withdraw()
 
     def show_and_focus(self):
@@ -437,7 +481,9 @@ class AvatarWindow(tk.Toplevel):
             self.img_id = self.canvas.create_image(
                 self.size // 2, self.size // 2, image=self.tk_img
             )
+            self.is_image = True
         except Exception:
+            self.is_image = False
             self.img_id = self.canvas.create_oval(
                 25,
                 25,
@@ -502,9 +548,18 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if getattr(self, "is_image", True):
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        else:
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -653,6 +708,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.quick_input.show_and_focus(),
         )
         self.btn_quick.pack(side="right", padx=3)
+        CTkToolTip(self.btn_quick, "Ouvrir la saisie rapide")
 
         self.btn_hide = ctk.CTkButton(
             self.header_frame,
@@ -663,6 +719,7 @@ class VisionAssistantApp(ctk.CTk):
             command=self.toggle_main_window,
         )
         self.btn_hide.pack(side="right", padx=3)
+        CTkToolTip(self.btn_hide, "Masquer la fenêtre (Échap)")
 
         self.lbl_status = ctk.CTkLabel(
             self.main_frame,
@@ -707,6 +764,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6), pady=8)
+        CTkToolTip(self.btn_vision, "Analyser l'écran (📸)")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
@@ -718,6 +776,9 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+        CTkToolTip(self.btn_send, "Envoyer la demande (🚀)")
+
+        self.bind("<Escape>", lambda event: self.toggle_main_window())
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
