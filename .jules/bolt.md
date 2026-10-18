@@ -1,0 +1,5 @@
+## 2026-09-04 - Redundant OpenCV Color Space Conversions in PIL Image Processing
+
+**Learning:** `PrivacyFilter.redact_sensitive_data` was converting PIL RGB images to BGR (`cv2.COLOR_RGB2BGR`), then BGR to Grayscale (`cv2.COLOR_BGR2GRAY`), performing spatial Gaussian blurring on BGR slices, and converting back to RGB (`cv2.COLOR_BGR2RGB`). Spatial operations like Gaussian blur and grayscale conversion do not depend on BGR vs RGB channel ordering. Performing these conversions forced 2 redundant full-resolution frame image allocations and conversions per screenshot frame (~68 ms overhead per 1080p frame).
+
+**Action:** When integrating PIL Images with OpenCV for spatial transformations or feature detection, convert directly from RGB to Grayscale (`cv2.COLOR_RGB2GRAY`) and perform in-place spatial operations (e.g. `GaussianBlur`) directly on the RGB numpy array. Avoid BGR roundtrips unless OpenCV functions specifically require BGR channel order (e.g. color space specific color thresholding or displaying via `cv2.imshow`).
