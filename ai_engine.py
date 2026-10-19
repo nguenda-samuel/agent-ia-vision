@@ -1,6 +1,18 @@
 import json
+import re
 import time
 from database import get_cached_answer, save_answer
+
+
+def sanitize_error_message(msg: str) -> str:
+    """Nettoie les informations sensibles (comme les clés API) des messages d'erreur."""
+    if not isinstance(msg, str):
+        msg = str(msg)
+    sanitized = re.sub(r"AIzaSy[A-Za-z0-9_-]{33}", "[REDACTED_API_KEY]", msg)
+    sanitized = re.sub(
+        r"((?:key|api_key|token)=)[^\s&]+", r"\1[REDACTED]", sanitized, flags=re.IGNORECASE
+    )
+    return sanitized
 from google import genai
 from google.genai import types
 from memory import ActionMemory
@@ -20,6 +32,11 @@ class AIEngine:
         self, raw_screenshot, user_intent: str
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
+
+        # Validation et nettoyage de l'intention utilisateur
+        if not isinstance(user_intent, str):
+            user_intent = str(user_intent) if user_intent is not None else ""
+        user_intent = user_intent.strip()[:1000]
 
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
@@ -112,7 +129,7 @@ class AIEngine:
                 return action_result
 
             except Exception as e:
-                err_str = str(e)
+                err_str = sanitize_error_message(e)
                 # Détection des erreurs de surcharge ou de quota temporaire (503, 429)
                 if (
                     "503" in err_str
@@ -126,7 +143,7 @@ class AIEngine:
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Augmente le temps d'attente à chaque échec
                 else:
-                    print(f"[Erreur Gemini API] : {e}")
+                    print(f"[Erreur Gemini API] : {err_str}")
                     return {
                         "action": "none",
                         "text": "Désolé, je n'ai pas pu analyser l'écran.",
