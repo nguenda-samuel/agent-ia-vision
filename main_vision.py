@@ -17,7 +17,7 @@ import pygame
 from pynput import keyboard, mouse
 import speech_recognition as sr
 
-from ai_engine import AIEngine
+from ai_engine import AIEngine, sanitize_error_message
 
 # Configuration de l'esthétique globale
 ctk.set_appearance_mode("Dark")
@@ -904,7 +904,7 @@ class VisionAssistantApp(ctk.CTk):
                 self.after(0, self.stop_agent_workflow)
 
         except Exception as e:
-            err_msg = str(e)
+            err_msg = sanitize_error_message(e)
             if (
                 "429" in err_msg
                 or "RESOURCE_EXHAUSTED" in err_msg
