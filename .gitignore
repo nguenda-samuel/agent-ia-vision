@@ -5,4 +5,7 @@
 !stream.py
 !memory.py
 !ai_engine.py
+!database.py
+!test_database.py
+!.jules/
 !requirements.txt
