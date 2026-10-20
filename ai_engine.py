@@ -1,5 +1,6 @@
 import json
 import time
+# SECURITY: Uses database.py parameterized queries to safely query and store cached answers
 from database import get_cached_answer, save_answer
 from google import genai
 from google.genai import types
