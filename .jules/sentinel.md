@@ -1,0 +1,4 @@
+## 2026-09-04 - Parameterized Queries for SQLite Database Cache
+**Vulnerability:** Raw or unparameterized database operations on user input in `database.py` (which caused `ModuleNotFoundError` when missing) can expose the app to SQL injection if user intents are formatted directly into SQL statements.
+**Learning:** `ai_engine.py` depended on a missing `database.py` module for answer caching. Additionally, this repository uses an explicit whitelist pattern in `.gitignore` (`*`), so new Python files and `.jules` journal entries are ignored by default unless explicitly un-ignored.
+**Prevention:** Always use parameterized SQL placeholders (`?`) in SQLite queries rather than string formatting. Ensure `.gitignore` rules are updated whenever new required files or directories (like `.jules/`) are created.
