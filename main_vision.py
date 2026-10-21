@@ -916,7 +916,11 @@ class VisionAssistantApp(ctk.CTk):
                 )
                 self.after(0, self.stop_agent_workflow)
             else:
-                self.append_to_chat(f"❌ Erreur : {err_msg}", is_user=False)
+                print(f"[Agent Error] {err_msg}")
+                self.append_to_chat(
+                    "❌ Une erreur est survenue lors du traitement.",
+                    is_user=False,
+                )
                 self.after(
                     0, lambda: self.set_status("❌ Erreur", "#e74c3c", "idle")
                 )
