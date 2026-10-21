@@ -1,0 +1,3 @@
+## 2026-10-21 - Downscale High-Resolution Screenshots Before Perceptual Hashing
+**Learning:** Calling `imagehash.phash` on raw 1080p/4K PIL Images converts the full-resolution image to grayscale and applies high-cost resampling across millions of pixels. This takes ~64ms per call. Pre-downscaling screenshots to a smaller size like 128x128 with fast `Image.Resampling.BOX` reduces `phash` calculation time to ~6ms (~10x speedup / ~90% reduction) while preserving perceptual hash accuracy for screen motion detection.
+**Action:** Always resize large images to small thumbnails (e.g. 128x128) before calculating perceptual or average hashes when tracking frame or screen changes.
