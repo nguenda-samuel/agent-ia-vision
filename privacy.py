@@ -11,6 +11,10 @@ class PrivacyFilter:
         )
 
     def redact_sensitive_data(self, pil_image: Image.Image) -> Image.Image:
+        # Security: Ensure image is converted to RGB mode first to prevent channel mismatch,
+        # unhandled color formats (e.g. RGBA/L/P), or OpenCV conversion crashes that bypass redaction.
+        if pil_image.mode != "RGB":
+            pil_image = pil_image.convert("RGB")
         open_cv_image = np.array(pil_image)
         open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
         gray = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
