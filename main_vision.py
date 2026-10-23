@@ -216,6 +216,52 @@ class AnimatedPointerWindow(tk.Toplevel):
         self.geometry("+-300+-300")
 
 
+# ==================== TOOLTIP ACCESSIBILITÉ / MICRO-UX ====================
+
+
+class ToolTip:
+    """Affiche une info-bulle accessible au survol d'un widget."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip, add="+")
+        self.widget.bind("<Leave>", self.hide_tooltip, add="+")
+
+    def show_tooltip(self, event=None):
+        if self.tooltip_window or not self.text:
+            return
+        try:
+            x = self.widget.winfo_rootx() + (self.widget.winfo_width() // 2)
+            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
+            self.tooltip_window = tw = tk.Toplevel(self.widget)
+            tw.wm_overrideredirect(True)
+            tw.wm_geometry(f"+{x}+{y}")
+            tw.attributes("-topmost", True)
+            label = tk.Label(
+                tw,
+                text=self.text,
+                justify="left",
+                background=FRAME_BG,
+                foreground=TEXT_COLOR,
+                relief="solid",
+                borderwidth=1,
+                font=("Segoe UI", 9),
+            )
+            label.pack(ipadx=6, ipady=3)
+        except Exception:
+            pass
+
+    def hide_tooltip(self, event=None):
+        if self.tooltip_window:
+            try:
+                self.tooltip_window.destroy()
+            except Exception:
+                pass
+            self.tooltip_window = None
+
+
 # ==================== MINI-FENÊTRE DE SAISIE RAPIDE ====================
 
 
@@ -293,6 +339,9 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+
+        ToolTip(self.btn_vision, "Analyser l'écran avec la vision")
+        ToolTip(self.btn_send, "Envoyer la demande")
 
         self.withdraw()
 
@@ -437,6 +486,7 @@ class AvatarWindow(tk.Toplevel):
             self.img_id = self.canvas.create_image(
                 self.size // 2, self.size // 2, image=self.tk_img
             )
+            self.has_img = True
         except Exception:
             self.img_id = self.canvas.create_oval(
                 25,
@@ -446,9 +496,10 @@ class AvatarWindow(tk.Toplevel):
                 fill="#2c3e50",
                 outline="",
             )
-            self.canvas.create_text(
+            self.text_id = self.canvas.create_text(
                 self.size // 2, self.size // 2, text="🤖", font=("Arial", 30)
             )
+            self.has_img = False
 
         self.canvas.bind("<Button-1>", self.start_drag)
         self.canvas.bind("<B1-Motion>", self.do_drag)
@@ -502,9 +553,22 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if getattr(self, "has_img", True):
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        else:
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
+            if hasattr(self, "text_id"):
+                self.canvas.coords(
+                    self.text_id, self.size // 2, (self.size // 2) + offset_y
+                )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -664,6 +728,9 @@ class VisionAssistantApp(ctk.CTk):
         )
         self.btn_hide.pack(side="right", padx=3)
 
+        ToolTip(self.btn_quick, "Ouvrir la saisie rapide")
+        ToolTip(self.btn_hide, "Masquer l'application")
+
         self.lbl_status = ctk.CTkLabel(
             self.main_frame,
             text="🟢 Prêt",
@@ -718,6 +785,9 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+
+        ToolTip(self.btn_vision, "Analyser l'écran avec la vision")
+        ToolTip(self.btn_send, "Envoyer la demande")
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
