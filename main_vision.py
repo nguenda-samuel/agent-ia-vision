@@ -502,9 +502,18 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if self.canvas.type(self.img_id) == "image":
+            self.canvas.coords(
+                self.img_id, self.size // 2, (self.size // 2) + offset_y
+            )
+        else:
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -916,7 +925,9 @@ class VisionAssistantApp(ctk.CTk):
                 )
                 self.after(0, self.stop_agent_workflow)
             else:
-                self.append_to_chat(f"❌ Erreur : {err_msg}", is_user=False)
+                # SECURITY: Do not expose raw exception details to UI to avoid Information Disclosure (CWE-209).
+                print(f"[Error] autonomous_agent_step failed: {err_msg}")
+                self.append_to_chat("❌ Une erreur est survenue lors de l'analyse.", is_user=False)
                 self.after(
                     0, lambda: self.set_status("❌ Erreur", "#e74c3c", "idle")
                 )

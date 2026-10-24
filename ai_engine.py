@@ -21,6 +21,11 @@ class AIEngine:
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
 
+        # Security: Validate input and enforce length limit to mitigate DoS / prompt resource exhaustion (CWE-20)
+        if not user_intent or not isinstance(user_intent, str):
+            user_intent = "Assistance et guidage sur l'écran"
+        user_intent = user_intent.strip()[:500]
+
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
         # -------------------------------------------------------------
