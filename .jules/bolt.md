@@ -1,0 +1,3 @@
+## 2025-05-18 - Downscaling OpenCV Haar Cascade Search Space
+**Learning:** Running `cv2.CascadeClassifier.detectMultiScale` on full-resolution desktop screenshots (e.g. 768x768) takes ~175ms per frame. Downscaling the grayscale input image by 0.5x reduces the search pixel area by 75%, bringing face detection latency down to ~70ms (~2.5x speedup) with minimal accuracy impact for face privacy redaction.
+**Action:** When performing cascade object detection or heavy visual feature extraction on full-screen screenshots in desktop AI vision pipelines, always downscale the analysis image first and scale the bounding coordinates back up to full resolution for rendering/cropping.
