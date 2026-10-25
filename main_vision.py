@@ -31,6 +31,58 @@ ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
 
 
+# ==================== TOOLTIP ACCESSIBLE ET ACCESSIBILITÉ ====================
+
+
+class CTkToolTip:
+    """Affiche un infobulle contextuel au survol ou lors de la prise de focus."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+
+        self.widget.bind("<Enter>", self.show)
+        self.widget.bind("<Leave>", self.hide)
+        self.widget.bind("<FocusIn>", self.show)
+        self.widget.bind("<FocusOut>", self.hide)
+
+    def show(self, event=None):
+        if self.tooltip_window or not self.text:
+            return
+        try:
+            x = self.widget.winfo_rootx() + 5
+            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        except Exception:
+            return
+
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        try:
+            tw.attributes("-topmost", True)
+        except Exception:
+            pass
+
+        label = tk.Label(
+            tw,
+            text=self.text,
+            bg=FRAME_BG,
+            fg=TEXT_COLOR,
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9),
+            padx=8,
+            pady=4,
+        )
+        label.pack()
+
+    def hide(self, event=None):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
+
+
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
 
 
@@ -283,16 +335,18 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6))
+        CTkToolTip(self.btn_vision, "Analyser l'écran courant avec la demande")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
-            text="🚀",
-            width=45,
+            text="🚀 Envoyer",
+            width=80,
             height=42,
-            font=ctk.CTkFont(size=15, weight="bold"),
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+        CTkToolTip(self.btn_send, "Envoyer l'instruction rapide à l'agent")
 
         self.withdraw()
 
@@ -437,6 +491,8 @@ class AvatarWindow(tk.Toplevel):
             self.img_id = self.canvas.create_image(
                 self.size // 2, self.size // 2, image=self.tk_img
             )
+            self.is_image_avatar = True
+            self.text_id = None
         except Exception:
             self.img_id = self.canvas.create_oval(
                 25,
@@ -446,9 +502,10 @@ class AvatarWindow(tk.Toplevel):
                 fill="#2c3e50",
                 outline="",
             )
-            self.canvas.create_text(
+            self.text_id = self.canvas.create_text(
                 self.size // 2, self.size // 2, text="🤖", font=("Arial", 30)
             )
+            self.is_image_avatar = False
 
         self.canvas.bind("<Button-1>", self.start_drag)
         self.canvas.bind("<B1-Motion>", self.do_drag)
@@ -502,11 +559,23 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        cy_center = (self.size // 2) + offset_y
 
-        cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
+        if self.is_image_avatar:
+            self.canvas.coords(self.img_id, self.size // 2, cy_center)
+        else:
+            r_avatar = 30
+            self.canvas.coords(
+                self.img_id,
+                self.size // 2 - r_avatar,
+                cy_center - r_avatar,
+                self.size // 2 + r_avatar,
+                cy_center + r_avatar,
+            )
+            if self.text_id:
+                self.canvas.coords(self.text_id, self.size // 2, cy_center)
+
+        cx, cy, r = self.size // 2, cy_center, 35
 
         if self.state == "idle":
             width = 2 + math.sin(time.time() * 3) * 1.5
@@ -653,6 +722,7 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.quick_input.show_and_focus(),
         )
         self.btn_quick.pack(side="right", padx=3)
+        CTkToolTip(self.btn_quick, "Ouvrir la fenêtre de saisie rapide")
 
         self.btn_hide = ctk.CTkButton(
             self.header_frame,
@@ -663,6 +733,7 @@ class VisionAssistantApp(ctk.CTk):
             command=self.toggle_main_window,
         )
         self.btn_hide.pack(side="right", padx=3)
+        CTkToolTip(self.btn_hide, "Réduire ou afficher la fenêtre principale")
 
         self.lbl_status = ctk.CTkLabel(
             self.main_frame,
@@ -698,26 +769,28 @@ class VisionAssistantApp(ctk.CTk):
 
         self.btn_vision = ctk.CTkButton(
             self.input_frame,
-            text="📸",
-            width=45,
+            text="📸 Écran",
+            width=80,
             height=40,
             fg_color=USER_BUBBLE,
             hover_color="#5f27cd",
-            font=ctk.CTkFont(size=16),
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_vision.pack(side="right", padx=(0, 6), pady=8)
+        CTkToolTip(self.btn_vision, "Analyser l'écran à l'aide de l'IA Vision (F9)")
 
         self.btn_send = ctk.CTkButton(
             self.input_frame,
-            text="🚀",
-            width=45,
+            text="🚀 Envoyer",
+            width=85,
             height=40,
-            font=ctk.CTkFont(size=15),
+            font=ctk.CTkFont(size=13, weight="bold"),
             fg_color="#0984e3",
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+        CTkToolTip(self.btn_send, "Envoyer la commande textuelle à l'agent")
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
