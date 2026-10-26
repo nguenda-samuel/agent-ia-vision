@@ -782,6 +782,11 @@ class VisionAssistantApp(ctk.CTk):
         self.entry.delete(0, tk.END)
 
         if prompt:
+            if len(prompt) > 1000:
+                self.append_to_chat(
+                    "⚠️ Demande trop longue (1000 caractères maximum).", is_user=False
+                )
+                return
             self.append_to_chat(prompt, is_user=True)
             self.current_workflow_goal = prompt
         elif not self.current_workflow_goal:
@@ -916,7 +921,10 @@ class VisionAssistantApp(ctk.CTk):
                 )
                 self.after(0, self.stop_agent_workflow)
             else:
-                self.append_to_chat(f"❌ Erreur : {err_msg}", is_user=False)
+                # Do not leak internal exception details, stack traces, or API keys in UI messages
+                self.append_to_chat(
+                    "❌ Une erreur est survenue lors du traitement.", is_user=False
+                )
                 self.after(
                     0, lambda: self.set_status("❌ Erreur", "#e74c3c", "idle")
                 )
