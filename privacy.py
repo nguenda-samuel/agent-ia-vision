@@ -21,9 +21,9 @@ class PrivacyFilter:
         )
         for x, y, w, h in faces:
             roi = open_cv_image[y : y + h, x : x + w]
-            open_cv_image[y : y + h, x : x + w] = cv2.GaussianBlur(
-                roi, (99, 99), 30
-            )
+            blurred_roi = self._apply_blur(roi, max_kernel_size=99)
+            if blurred_roi is not None:
+                open_cv_image[y : y + h, x : x + w] = blurred_roi
 
         # Floutage des champs de saisie rectangulaires (ex: mots de passe)
         _, thresh = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY_INV)
@@ -35,8 +35,29 @@ class PrivacyFilter:
             x, y, w, h = cv2.boundingRect(cnt)
             if 100 < w < 400 and 20 < h < 60:
                 roi = open_cv_image[y : y + h, x : x + w]
-                open_cv_image[y : y + h, x : x + w] = cv2.GaussianBlur(
-                    roi, (51, 51), 0
-                )
+                blurred_roi = self._apply_blur(roi, max_kernel_size=51)
+                if blurred_roi is not None:
+                    open_cv_image[y : y + h, x : x + w] = blurred_roi
 
         return Image.fromarray(cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2RGB))
+
+    def _apply_blur(
+        self, roi: np.ndarray, max_kernel_size: int = 51
+    ) -> np.ndarray | None:
+        """Applique un flou gaussien de manière sécurisée en adaptant le noyau à la taille de la ROI."""
+        h, w = roi.shape[:2]
+        if h <= 0 or w <= 0:
+            return None
+
+        # Le noyau de flou doit avoir une dimension impaire et <= aux dimensions de la ROI
+        kw = min(max_kernel_size, w if w % 2 == 1 else w - 1)
+        kh = min(max_kernel_size, h if h % 2 == 1 else h - 1)
+
+        kw = max(1, kw)
+        kh = max(1, kh)
+
+        # Si le noyau est 1x1, aucun flou ne peut être appliqué
+        if kw <= 1 and kh <= 1:
+            return roi
+
+        return cv2.GaussianBlur(roi, (kw, kh), 0)
