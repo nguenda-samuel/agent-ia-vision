@@ -2,8 +2,6 @@ import io
 import math
 import os
 import random
-import re
-import sys
 import threading
 import time
 import tkinter as tk
@@ -12,7 +10,7 @@ import customtkinter as ctk
 from google import genai
 from gtts import gTTS
 import mss
-from PIL import Image, ImageChops, ImageStat, ImageTk
+from PIL import Image, ImageTk
 import pygame
 from pynput import keyboard, mouse
 import speech_recognition as sr
@@ -29,6 +27,46 @@ USER_BUBBLE = "#6c5ce7"
 AI_BUBBLE = "#34495e"
 ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
+
+
+# ==================== TOOLTIP HELPER ====================
+
+
+class CTkToolTip:
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip)
+        self.widget.bind("<Leave>", self.hide_tooltip)
+
+    def show_tooltip(self, event=None):
+        if self.tooltip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 10
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        tw.wm_attributes("-topmost", True)
+        label = tk.Label(
+            tw,
+            text=self.text,
+            bg="#2a2b3d",
+            fg="#c8d3f5",
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9),
+            padx=6,
+            pady=3,
+        )
+        label.pack()
+
+    def hide_tooltip(self, event=None):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
 
 
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
@@ -151,21 +189,15 @@ class AnimatedPointerWindow(tk.Toplevel):
             pointer_center_x = self.current_x + (self.size / 2)
             pointer_center_y = self.current_y + (self.size / 2)
 
-            dist_target = math.hypot(
-                x - self.exact_target_x, y - self.exact_target_y
-            )
-            dist_pointer = math.hypot(
-                x - pointer_center_x, y - pointer_center_y
-            )
+            dist_target = math.hypot(x - self.exact_target_x, y - self.exact_target_y)
+            dist_pointer = math.hypot(x - pointer_center_x, y - pointer_center_y)
 
             if (
                 dist_target <= self.tolerance_radius
                 or dist_pointer <= self.tolerance_radius
             ):
                 self.active_listener = False
-                clicked_on_finger = (dist_pointer < dist_target) and (
-                    dist_target > 25
-                )
+                clicked_on_finger = (dist_pointer < dist_target) and (dist_target > 25)
 
                 if clicked_on_finger:
 
@@ -267,9 +299,7 @@ class QuickInputWindow(ctk.CTkToplevel):
             border_color=USER_BUBBLE,
         )
         self.entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
-        self.entry.bind(
-            "<Return>", lambda event: self.send_prompt(use_vision=True)
-        )
+        self.entry.bind("<Return>", lambda event: self.send_prompt(use_vision=True))
         self.entry.bind("<Escape>", lambda event: self.withdraw())
 
         self.btn_vision = ctk.CTkButton(
@@ -293,6 +323,9 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+
+        CTkToolTip(self.btn_vision, "Analyser l'écran (F9)")
+        CTkToolTip(self.btn_send, "Envoyer la demande")
 
         self.withdraw()
 
@@ -502,9 +535,16 @@ class AvatarWindow(tk.Toplevel):
     def animate_ring_and_levitate(self):
         self.canvas.delete("ring")
         offset_y = math.sin(time.time() * 2.5) * 6
-        self.canvas.coords(
-            self.img_id, self.size // 2, (self.size // 2) + offset_y
-        )
+        if self.canvas.type(self.img_id) == "image":
+            self.canvas.coords(self.img_id, self.size // 2, (self.size // 2) + offset_y)
+        else:
+            self.canvas.coords(
+                self.img_id,
+                25,
+                25 + offset_y,
+                self.size - 25,
+                self.size - 25 + offset_y,
+            )
 
         cx, cy, r = self.size // 2, (self.size // 2) + offset_y, 35
 
@@ -611,7 +651,9 @@ class VisionAssistantApp(ctk.CTk):
         self.workflow_active = False
         self.is_processing = False  # Garde-fou : empêche deux analyses simultanées
         self.wait_retry_count = 0
-        self.max_wait_retries = 6  # Nombre d'attentes consécutives tolérées avant d'abandonner
+        self.max_wait_retries = (
+            6  # Nombre d'attentes consécutives tolérées avant d'abandonner
+        )
         self.current_sequence = []
         self.current_step_index = 0
         self.current_monitor = None
@@ -631,9 +673,7 @@ class VisionAssistantApp(ctk.CTk):
         )
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.header_frame = ctk.CTkFrame(
-            self.main_frame, fg_color="transparent"
-        )
+        self.header_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         self.header_frame.pack(side="top", fill="x", padx=10, pady=(10, 0))
 
         self.header_label = ctk.CTkLabel(
@@ -689,12 +729,8 @@ class VisionAssistantApp(ctk.CTk):
             fg_color="transparent",
             border_width=0,
         )
-        self.entry.pack(
-            side="left", fill="x", expand=True, padx=(8, 6), pady=8
-        )
-        self.entry.bind(
-            "<Return>", lambda event: self.process_request(use_vision=True)
-        )
+        self.entry.pack(side="left", fill="x", expand=True, padx=(8, 6), pady=8)
+        self.entry.bind("<Return>", lambda event: self.process_request(use_vision=True))
 
         self.btn_vision = ctk.CTkButton(
             self.input_frame,
@@ -719,12 +755,13 @@ class VisionAssistantApp(ctk.CTk):
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
 
+        CTkToolTip(self.btn_vision, "Analyser l'écran (F9)")
+        CTkToolTip(self.btn_send, "Envoyer la demande")
+
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
         )
-        self.chat_history.pack(
-            side="top", fill="both", expand=True, padx=5, pady=5
-        )
+        self.chat_history.pack(side="top", fill="both", expand=True, padx=5, pady=5)
 
         self.append_to_chat(
             "🤖 Agent Prêt !\n👉 Cliquez sur 📸 pour analyser l'écran ou entrez votre prompt.",
@@ -738,9 +775,7 @@ class VisionAssistantApp(ctk.CTk):
         self.withdraw()
         self.main_window_visible = False
 
-        self.hotkey_listener = keyboard.GlobalHotKeys(
-            {"<f9>": self.on_f9_pressed}
-        )
+        self.hotkey_listener = keyboard.GlobalHotKeys({"<f9>": self.on_f9_pressed})
         self.hotkey_listener.start()
 
         self.protocol("WM_DELETE_WINDOW", self.toggle_main_window)
@@ -758,6 +793,13 @@ class VisionAssistantApp(ctk.CTk):
         self.entry.insert(0, text)
         self.process_request(use_vision=use_vision)
 
+    def set_button_states(self, state_val):
+        self.btn_vision.configure(state=state_val)
+        self.btn_send.configure(state=state_val)
+        if hasattr(self, "quick_input"):
+            self.quick_input.btn_vision.configure(state=state_val)
+            self.quick_input.btn_send.configure(state=state_val)
+
     def set_status(self, text, color="#55efc4", avatar_state="idle"):
         self.lbl_status.configure(text=text, text_color=color)
         self.avatar.set_state(avatar_state)
@@ -769,6 +811,7 @@ class VisionAssistantApp(ctk.CTk):
         self.last_click_coords = (-100, -100)
         self.pointer.hide()
         self.stop_audio()
+        self.set_button_states("normal")
         self.set_status("🟢 Prêt", "#55efc4", "idle")
 
     def process_request(self, use_vision):
@@ -789,6 +832,7 @@ class VisionAssistantApp(ctk.CTk):
 
         self.workflow_active = True
         self.is_processing = True
+        self.set_button_states("disabled")
         self.current_sequence = []
 
         self.set_status("⚡ Analyse de l'écran...", "#f1c40f", "scan")
@@ -857,9 +901,7 @@ class VisionAssistantApp(ctk.CTk):
                         self.current_step_index = 0
                         self.after(
                             0,
-                            lambda: self.execute_sequence_step(
-                                self.current_step_index
-                            ),
+                            lambda: self.execute_sequence_step(self.current_step_index),
                         )
                     elif action == "wait":
                         self.speak(response_text)
@@ -917,14 +959,13 @@ class VisionAssistantApp(ctk.CTk):
                 self.after(0, self.stop_agent_workflow)
             else:
                 self.append_to_chat(f"❌ Erreur : {err_msg}", is_user=False)
-                self.after(
-                    0, lambda: self.set_status("❌ Erreur", "#e74c3c", "idle")
-                )
+                self.after(0, lambda: self.set_status("❌ Erreur", "#e74c3c", "idle"))
                 self.after(0, self.stop_agent_workflow)
         finally:
             # Quoi qu'il arrive (succès, erreur, ou sortie anticipée), on
             # relâche le verrou pour qu'une nouvelle analyse puisse démarrer.
             self.is_processing = False
+            self.after(0, lambda: self.set_button_states("normal"))
 
     def execute_sequence_step(self, index):
         if not self.workflow_active:
@@ -934,9 +975,7 @@ class VisionAssistantApp(ctk.CTk):
             self.pointer.hide()
 
             def _wait_and_reprocess():
-                self.set_status(
-                    "⚡ Analyse de la suite...", "#00cec9", "scan"
-                )
+                self.set_status("⚡ Analyse de la suite...", "#00cec9", "scan")
                 self.process_request(use_vision=True)
 
             threading.Thread(target=_wait_and_reprocess, daemon=True).start()
@@ -959,12 +998,8 @@ class VisionAssistantApp(ctk.CTk):
         self.last_click_coords = (step["x"], step["y"])
 
         monitor = self.current_monitor
-        click_x = monitor["left"] + int(
-            (step["x"] / 1000.0) * monitor["width"]
-        )
-        click_y = monitor["top"] + int(
-            (step["y"] / 1000.0) * monitor["height"]
-        )
+        click_x = monitor["left"] + int((step["x"] / 1000.0) * monitor["width"])
+        click_y = monitor["top"] + int((step["y"] / 1000.0) * monitor["height"])
 
         self.avatar.dodge_if_needed(click_x, click_y)
         self.pointer.animate_to(click_x, click_y)
@@ -985,9 +1020,7 @@ class VisionAssistantApp(ctk.CTk):
     def get_active_monitor(self):
         x, y = self.winfo_pointerx(), self.winfo_pointery()
         with mss.MSS() as sct:
-            monitors = (
-                sct.monitors[1:] if len(sct.monitors) > 1 else sct.monitors
-            )
+            monitors = sct.monitors[1:] if len(sct.monitors) > 1 else sct.monitors
             for mon in monitors:
                 if (
                     mon["left"] <= x <= mon["left"] + mon["width"]
@@ -1015,9 +1048,7 @@ class VisionAssistantApp(ctk.CTk):
                 )
                 with sr.Microphone() as source:
                     recognizer.adjust_for_ambient_noise(source, duration=0.4)
-                    audio = recognizer.listen(
-                        source, timeout=4, phrase_time_limit=6
-                    )
+                    audio = recognizer.listen(source, timeout=4, phrase_time_limit=6)
                 text = recognizer.recognize_google(audio, language="fr-FR")
                 self.after(0, lambda: self.append_to_chat(text, is_user=True))
                 self.after(
@@ -1025,9 +1056,7 @@ class VisionAssistantApp(ctk.CTk):
                     lambda: self.process_custom_prompt(text, use_vision=True),
                 )
             except Exception:
-                self.after(
-                    0, lambda: self.set_status("🟢 Prêt", "#55efc4", "idle")
-                )
+                self.after(0, lambda: self.set_status("🟢 Prêt", "#55efc4", "idle"))
                 self.after(0, self.subtitle.hide)
 
         threading.Thread(target=_listen, daemon=True).start()
@@ -1107,12 +1136,9 @@ class VisionAssistantApp(ctk.CTk):
             ipady=8,
         )
 
-        self.after(
-            50, lambda: self.chat_history._parent_canvas.yview_moveto(1.0)
-        )
+        self.after(50, lambda: self.chat_history._parent_canvas.yview_moveto(1.0))
 
 
 if __name__ == "__main__":
     app = VisionAssistantApp()
     app.mainloop()
-
