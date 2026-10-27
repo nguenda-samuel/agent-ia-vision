@@ -12,8 +12,10 @@ class PrivacyFilter:
 
     def redact_sensitive_data(self, pil_image: Image.Image) -> Image.Image:
         open_cv_image = np.array(pil_image)
-        open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
-        gray = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
+        # Convert RGB directly to grayscale, avoiding redundant RGB->BGR and BGR->RGB conversions
+        gray = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2GRAY)
+
+        modified = False
 
         # Floutage automatique des visages à l'écran
         faces = self.face_cascade.detectMultiScale(
@@ -21,9 +23,8 @@ class PrivacyFilter:
         )
         for x, y, w, h in faces:
             roi = open_cv_image[y : y + h, x : x + w]
-            open_cv_image[y : y + h, x : x + w] = cv2.GaussianBlur(
-                roi, (99, 99), 30
-            )
+            open_cv_image[y : y + h, x : x + w] = cv2.GaussianBlur(roi, (99, 99), 30)
+            modified = True
 
         # Floutage des champs de saisie rectangulaires (ex: mots de passe)
         _, thresh = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY_INV)
@@ -35,8 +36,11 @@ class PrivacyFilter:
             x, y, w, h = cv2.boundingRect(cnt)
             if 100 < w < 400 and 20 < h < 60:
                 roi = open_cv_image[y : y + h, x : x + w]
-                open_cv_image[y : y + h, x : x + w] = cv2.GaussianBlur(
-                    roi, (51, 51), 0
-                )
+                open_cv_image[y : y + h, x : x + w] = cv2.GaussianBlur(roi, (51, 51), 0)
+                modified = True
 
-        return Image.fromarray(cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2RGB))
+        # Return original PIL image if unmodified, avoiding unnecessary array copy and reconstruction
+        if not modified:
+            return pil_image
+
+        return Image.fromarray(open_cv_image)
