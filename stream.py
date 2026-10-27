@@ -1,3 +1,4 @@
+import time
 from PIL import Image
 import imagehash
 
@@ -31,3 +32,18 @@ class ScreenStream:
             return True
 
         return False
+
+    def wait_until_stable(
+        self, capture_fn, max_wait: float = 2.0, poll_interval: float = 0.1
+    ) -> Image.Image:
+        """Attend localement que l'écran se stabilise avant d'envoyer l'image à l'API."""
+        start_time = time.time()
+        img = capture_fn()
+        self.has_screen_changed(img)
+        while time.time() - start_time < max_wait:
+            time.sleep(poll_interval)
+            next_img = capture_fn()
+            if not self.has_screen_changed(next_img):
+                return next_img
+            img = next_img
+        return img

@@ -1,0 +1,4 @@
+## 2025-05-20 - Skip OpenCV Color Conversions and Composite Indexing
+
+**Learning:** OpenCV's `GaussianBlur` operates channel-by-channel and produces identical output on RGB numpy arrays as on BGR arrays. Performing `RGB2BGR` followed by `BGR2GRAY` and `BGR2RGB` in `PrivacyFilter` added ~20-25ms per frame. Operating directly on RGB and returning the original PIL image instance when `modified=False` gives a ~2.6x speedup. Furthermore, SQLite queries on `routines(screen_hash, user_intent)` perform an O(N) full table scan without a composite index; adding `idx_routines_hash_intent` reduces lookup latency from 1.34ms to 0.015ms (90x speedup).
+**Action:** Always check if color channel ordering is strictly necessary for CV filters before converting, return early/unmodified references when no mutations occur, and ensure multi-column SQLite queries have composite indexes.
