@@ -1,7 +1,6 @@
 import json
 import time
 from database import get_cached_answer, save_answer
-from google import genai
 from google.genai import types
 from memory import ActionMemory
 from privacy import PrivacyFilter
@@ -16,9 +15,7 @@ class AIEngine:
         self.stream = ScreenStream()
         self.memory = ActionMemory()
 
-    def process_screen_and_intent(
-        self, raw_screenshot, user_intent: str
-    ) -> dict:
+    def process_screen_and_intent(self, raw_screenshot, user_intent: str) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
 
         # -------------------------------------------------------------
@@ -43,8 +40,8 @@ class AIEngine:
         # 2. Si pas en cache, ou si vision requise : on traite
         # -------------------------------------------------------------
         if not raw_screenshot:
-             # Gestion erreur si pas d'image
-             return {
+            # Gestion erreur si pas d'image
+            return {
                 "action": "none",
                 "text": "Désolé, je ne peux pas analyser l'écran sans image.",
             }
@@ -56,7 +53,7 @@ class AIEngine:
         # C'EST ICI QUE TU AJOUTES LE CODE DU PROMPT
         # =============================================================
         print("[Gemini] Analyse de l'image via l'API...")
-        
+
         # Le code que tu dois copier-coller :
         prompt = f"""
         Tu es un assistant virtuel qui regarde l'écran d'un utilisateur pour l'aider à accomplir : "{user_intent}".
@@ -80,12 +77,12 @@ class AIEngine:
 
         # 3. Ensuite, ton code fait l'appel à l'API avec ce prompt :
         max_retries = 3
-        
+
         # -------------------------------------------------------------
         # CORRECTION 2 : DÉFINIR retry_delay AVANT LA BOUCLE
         # -------------------------------------------------------------
         retry_delay = 2  # Délai initial de 2 secondes
-        
+
         for attempt in range(max_retries):
             try:
                 # Appel Gemini (on utilise le 'prompt' mis à jour)
@@ -105,9 +102,7 @@ class AIEngine:
                 # Nous sauvegardons la réponse UNIQUEMENT si nous avons dû appeler Gemini.
                 # Et nous ne sauvegardons QUE les réponses textuelles d'intérêt (pas les actions de clic)
                 # Note: ici, on sauvegarde la réponse JSON complète pour le moment.
-                save_answer(
-                    user_intent, json.dumps(action_result, ensure_ascii=False)
-                )
+                save_answer(user_intent, json.dumps(action_result, ensure_ascii=False))
 
                 return action_result
 
@@ -115,9 +110,7 @@ class AIEngine:
                 err_str = str(e)
                 # Détection des erreurs de surcharge ou de quota temporaire (503, 429)
                 if (
-                    "503" in err_str
-                    or "UNAVAILABLE" in err_str
-                    or "429" in err_str
+                    "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str
                 ) and attempt < max_retries - 1:
                     # Ici, retry_delay est bien défini grâce à la correction
                     print(
@@ -131,4 +124,3 @@ class AIEngine:
                         "action": "none",
                         "text": "Désolé, je n'ai pas pu analyser l'écran.",
                     }
-
