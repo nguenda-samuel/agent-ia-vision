@@ -1,6 +1,14 @@
 import json
+import re
 import time
-from database import get_cached_answer, save_answer
+try:
+    from database import get_cached_answer, save_answer
+except ImportError:
+    def get_cached_answer(intent: str):
+        return None
+    def save_answer(intent: str, answer: str):
+        pass
+
 from google import genai
 from google.genai import types
 from memory import ActionMemory
@@ -16,10 +24,28 @@ class AIEngine:
         self.stream = ScreenStream()
         self.memory = ActionMemory()
 
+    def _sanitize_intent(self, user_intent: str) -> str:
+        """Sanitizes user intent input to protect against injection and excessive payload sizes."""
+        if not isinstance(user_intent, str):
+            return ""
+        # Strip leading/trailing whitespace and truncate to a max safe length (500 chars)
+        sanitized = user_intent.strip()[:500]
+        # Neutralize quotes and newlines to prevent prompt breaking/injection
+        sanitized = re.sub(r'["\r\n\t]+', ' ', sanitized)
+        # Collapse multiple spaces into a single space
+        sanitized = re.sub(r' +', ' ', sanitized).strip()
+        return sanitized
+
     def process_screen_and_intent(
         self, raw_screenshot, user_intent: str
     ) -> dict:
         """Nettoie l'image et analyse l'écran avec Gemini (avec cache DB intelligent)."""
+        user_intent = self._sanitize_intent(user_intent)
+        if not user_intent:
+            return {
+                "action": "none",
+                "text": "Instruction invalide ou vide.",
+            }
 
         # -------------------------------------------------------------
         # 1. CORRECTION : VÉRIFICATION DANS LA BASE DE DONNÉES EN PREMIER
