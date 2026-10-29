@@ -31,6 +31,48 @@ ACCENT_COLOR = "#00cec9"
 TEXT_COLOR = "#c8d3f5"
 
 
+# ==================== INFOBULLE / TOOLTIP ACCESSORITÉ ====================
+
+
+class ToolTip:
+    """Affiche une infobulle (tooltip) au survol d'un composant GUI."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tip_window = None
+        self.widget.bind("<Enter>", self.show_tip)
+        self.widget.bind("<Leave>", self.hide_tip)
+
+    def show_tip(self, event=None):
+        if self.tip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 20
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        tw.wm_attributes("-topmost", True)
+        label = tk.Label(
+            tw,
+            text=self.text,
+            justify="left",
+            background=FRAME_BG,
+            foreground=TEXT_COLOR,
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9, "normal"),
+            padx=6,
+            pady=3,
+        )
+        label.pack(ipadx=1)
+
+    def hide_tip(self, event=None):
+        if self.tip_window:
+            self.tip_window.destroy()
+            self.tip_window = None
+
+
 # ==================== POINTEUR VISUEL AVEC MAIN VECTORIELLE (SANS PNG) ====================
 
 
@@ -293,6 +335,8 @@ class QuickInputWindow(ctk.CTkToplevel):
             command=lambda: self.send_prompt(use_vision=True),
         )
         self.btn_send.pack(side="right")
+
+        ToolTip(self.btn_send, "Envoyer la commande")
 
         self.withdraw()
 
@@ -718,6 +762,9 @@ class VisionAssistantApp(ctk.CTk):
             command=lambda: self.process_request(use_vision=True),
         )
         self.btn_send.pack(side="right", padx=(0, 8), pady=8)
+
+        ToolTip(self.btn_vision, "Analyser l'écran (F9)")
+        ToolTip(self.btn_send, "Envoyer la commande")
 
         self.chat_history = ctk.CTkScrollableFrame(
             self.main_frame, fg_color="transparent"
