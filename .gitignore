@@ -6,3 +6,9 @@
 !memory.py
 !ai_engine.py
 !requirements.txt
+!tests/
+!tests/**
+!.jules/
+!.jules/**
+__pycache__/
+*.pyc
