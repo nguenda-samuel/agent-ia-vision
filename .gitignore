@@ -6,3 +6,6 @@
 !memory.py
 !ai_engine.py
 !requirements.txt
+!test_memory.py
+!.jules/
+!.jules/*
