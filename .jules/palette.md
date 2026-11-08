@@ -1,0 +1,3 @@
+## 2026-09-05 - CustomTkinter Compound Widget Event Binding for Tooltips
+**Learning:** CustomTkinter widgets (such as `CTkButton`) are composite widgets containing internal Tkinter canvas and label children (`CTkCanvas`, `tk.Label`). Standard Tkinter `<Enter>` and `<Leave>` hover bindings attached solely to the top-level `CTkButton` container do not fire reliably when hovering directly over the inner canvas or label. To ensure smooth and reliable tooltip trigger behavior, hover event listeners must be bound recursively to the widget and all its child widgets.
+**Action:** When creating tooltips or hover state indicators for CustomTkinter components, recursively traverse `widget.winfo_children()` to attach `<Enter>` and `<Leave>` bindings with `add="+"`.
