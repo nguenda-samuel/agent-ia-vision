@@ -1,0 +1,3 @@
+## 2026-09-22 - SQLite Composite Indexing for ActionMemory Lookups
+**Learning:** `ActionMemory` queries the `routines` table on every visual loop step using `SELECT action_data FROM routines WHERE screen_hash = ? AND user_intent = ? ORDER BY id DESC LIMIT 1`. Without an index on `(screen_hash, user_intent, id DESC)`, SQLite performs an O(N) full table scan and sorts matching rows in memory, which degrades lookup latency by orders of magnitude as routines accumulate.
+**Action:** Always create a composite index on `(screen_hash, user_intent, id DESC)` during table initialization in SQLite to convert full table scans into O(log N) index seeks with zero post-scan sorting overhead.
